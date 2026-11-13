@@ -1,6 +1,6 @@
 import { ActionType, InferenceRoute, RoutingMode, OnDeviceAIStatus } from "../types";
 import { getCachedSection, setCachedSection } from "./firestoreService";
-import { auth, ai, getRemoteConfigValue, checkAppCheckToken } from "./firebaseService";
+import { auth, ai, getRemoteConfigValue, checkAppCheckToken, isAppCheckInCooldown, markAppCheckFailure, getAppCheckErrorMessage } from "./firebaseService";
 import { getGenerativeModel, InferenceMode, InferenceSource } from "firebase/ai";
 
 export { InferenceMode, InferenceSource };
@@ -484,6 +484,10 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
   quizData?: any;
   flashcardData?: any;
 }> {
+  if (isAppCheckInCooldown()) {
+    throw new Error(getAppCheckErrorMessage());
+  }
+
   const startTime = performance.now();
   const prompt = buildPrompt({ ...options });
   const promptBytes = new TextEncoder().encode(prompt).length;
@@ -503,10 +507,12 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
     throw new Error("On-device AI isn't available in this browser. To use on-device AI, use Chrome on a desktop computer with on-device AI enabled.");
   }
 
-  // Verify App Check token before AI call
-  const appCheckValid = await checkAppCheckToken();
-  if (!appCheckValid && !isOffline) {
-    console.warn("App Check token verification note: proceeding with request.");
+  // Verify App Check token before AI call when online
+  if (!isOffline) {
+    const appCheckValid = await checkAppCheckToken();
+    if (!appCheckValid && (options.manualMode === 'force-cloud' || !onDeviceAvailable)) {
+      throw new Error(getAppCheckErrorMessage());
+    }
   }
 
   const decision = determineRoute(
@@ -541,18 +547,38 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
     }
   });
 
-  const streamResult = await model.generateContentStream(prompt);
+  let streamResult;
+  try {
+    streamResult = await model.generateContentStream(prompt);
+  } catch (err: any) {
+    const errMsg = (err?.message || String(err)).toLowerCase();
+    if (errMsg.includes('appcheck') || errMsg.includes('app-check') || errMsg.includes('recaptcha')) {
+      markAppCheckFailure();
+      throw new Error(getAppCheckErrorMessage());
+    }
+    throw err;
+  }
+
   let accumulated = "";
 
-  for await (const chunk of streamResult.stream) {
-    if (!ttftMs) {
-      ttftMs = Math.round(performance.now() - startTime);
+  try {
+    for await (const chunk of streamResult.stream) {
+      if (!ttftMs) {
+        ttftMs = Math.round(performance.now() - startTime);
+      }
+      const chunkText = chunk.text();
+      if (chunkText) {
+        accumulated = chunkText;
+        options.onStream?.(accumulated);
+      }
     }
-    const chunkText = chunk.text();
-    if (chunkText) {
-      accumulated = chunkText;
-      options.onStream?.(accumulated);
+  } catch (err: any) {
+    const errMsg = (err?.message || String(err)).toLowerCase();
+    if (errMsg.includes('appcheck') || errMsg.includes('app-check') || errMsg.includes('recaptcha')) {
+      markAppCheckFailure();
+      throw new Error(getAppCheckErrorMessage());
     }
+    throw err;
   }
 
   const finalResponse = await streamResult.response;

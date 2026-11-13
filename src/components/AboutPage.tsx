@@ -63,7 +63,10 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme: propTheme, setTheme
 
     try {
       if (ai) {
-        const model = getGenerativeModel(ai, { mode: InferenceMode.PREFER_ON_DEVICE });
+        const model = getGenerativeModel(ai, {
+          mode: InferenceMode.PREFER_ON_DEVICE,
+          inCloudParams: { model: 'gemini-2.5-flash' }
+        });
         const res = await model.generateContent("Ping");
         const text = typeof (res as any).text === 'function' ? (res as any).text() : (res as any).text || (res as any).response?.text() || 'OK';
         aiTestResult = text ? "Success" : "Empty response";

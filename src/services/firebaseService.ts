@@ -17,7 +17,7 @@ import {
   persistentMultipleTabManager 
 } from "firebase/firestore";
 import { getAI, GoogleAIBackend } from "firebase/ai";
-import { initializeAppCheck, ReCaptchaV3Provider, getToken } from "firebase/app-check";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "firebase/app-check";
 import { getRemoteConfig, fetchAndActivate, getValue, RemoteConfig } from "firebase/remote-config";
 
 export const firebaseConfig = {
@@ -57,33 +57,58 @@ export const db = initializeFirestore(app, {
 
 export const googleProvider = new GoogleAuthProvider();
 
-// Initialize Firebase App Check: active on production domains (Railway), bypassed on preview/localhost to avoid recaptcha domain mismatch errors
+// App Check failure cooldown tracking (10-second cooldown per Task 2)
+let appCheckCooldownUntil = 0;
+const APP_CHECK_FRIENDLY_ERROR = "Security verification (App Check) is temporarily unavailable. Please wait 10 seconds before trying again.";
+
+export function isAppCheckInCooldown(): boolean {
+  return Date.now() < appCheckCooldownUntil;
+}
+
+export function getAppCheckErrorMessage(): string {
+  return APP_CHECK_FRIENDLY_ERROR;
+}
+
+export function markAppCheckFailure(): void {
+  appCheckCooldownUntil = Date.now() + 10000;
+}
+
+// Initialize Firebase App Check with ReCaptchaEnterpriseProvider
 let appCheck: any = null;
 try {
-  const isPreviewOrLocal = typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1' || 
-    window.location.hostname.includes('run.app')
-  );
+  if (typeof window !== 'undefined' && app) {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isDebugMode = isLocalhost || import.meta.env.VITE_APPCHECK_DEBUG === 'true' || window.location.hostname.includes('run.app');
 
-  if (!isPreviewOrLocal || import.meta.env.VITE_APPCHECK_DEBUG === 'true') {
+    if (isDebugMode && typeof self !== 'undefined') {
+      (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
+
     const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6Lc-Dh8uAAAAAC8aF0lQhxsJph6qF8dO6FJfu_BK";
     appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(siteKey),
+      provider: new ReCaptchaEnterpriseProvider(siteKey),
       isTokenAutoRefreshEnabled: true
     });
   }
 } catch (e) {
-  // Suppress recaptcha errors in preview
+  console.warn("App Check initialization warning:", e);
 }
 
 export async function checkAppCheckToken(): Promise<boolean> {
-  if (!appCheck) return true; // Return true in preview/debug mode
+  if (isAppCheckInCooldown()) {
+    return false;
+  }
+  if (!appCheck) return true; // Debug / bypass mode
   try {
     const tokenRes = await getToken(appCheck, false);
-    return Boolean(tokenRes && tokenRes.token);
-  } catch (err) {
+    if (!tokenRes || !tokenRes.token) {
+      markAppCheckFailure();
+      return false;
+    }
     return true;
+  } catch (err) {
+    markAppCheckFailure();
+    return false;
   }
 }
 

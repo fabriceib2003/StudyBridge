@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Brain, Sparkles, Shield, ArrowLeft, CheckCircle2, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
-import { auth, db, firebaseConfig, checkAppCheckToken, ai } from '../services/firebaseService';
+import { auth, db, firebaseConfig, checkAppCheckToken, isAppCheckInCooldown, markAppCheckFailure, getAppCheckErrorMessage, ai } from '../services/firebaseService';
 import { checkOnDeviceAIAvailability, InferenceMode } from '../services/aiService';
 import { getDocs, collection, query, limit } from 'firebase/firestore';
 import { getGenerativeModel } from 'firebase/ai';
@@ -63,17 +63,28 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme: propTheme, setTheme
 
     try {
       if (ai) {
-        const model = getGenerativeModel(ai, {
-          mode: InferenceMode.PREFER_ON_DEVICE,
-          inCloudParams: { model: 'gemini-2.5-flash' }
-        });
-        const res = await model.generateContent("Ping");
-        const text = typeof (res as any).text === 'function' ? (res as any).text() : (res as any).text || (res as any).response?.text() || 'OK';
-        aiTestResult = text ? "Success" : "Empty response";
-        aiSourceUsed = (res as any)?.inferenceSource || 'Cloud / On-Device';
+        if (isAppCheckInCooldown()) {
+          aiTestResult = getAppCheckErrorMessage();
+          aiSourceUsed = 'App Check Cooldown';
+        } else {
+          const model = getGenerativeModel(ai, {
+            mode: InferenceMode.PREFER_ON_DEVICE,
+            inCloudParams: { model: 'gemini-2.5-flash' }
+          });
+          const res = await model.generateContent("Ping");
+          const text = typeof (res as any).text === 'function' ? (res as any).text() : (res as any).text || (res as any).response?.text() || 'OK';
+          aiTestResult = text ? "Success" : "Empty response";
+          aiSourceUsed = (res as any)?.inferenceSource || 'Cloud / On-Device';
+        }
       }
     } catch (e: any) {
-      aiTestResult = `Error: ${e.message || 'Failed'}`;
+      const errMsg = (e?.message || String(e)).toLowerCase();
+      if (errMsg.includes('appcheck') || errMsg.includes('app check') || errMsg.includes('recaptcha')) {
+        markAppCheckFailure();
+        aiTestResult = getAppCheckErrorMessage();
+      } else {
+        aiTestResult = `Error: ${e.message || 'Failed'}`;
+      }
       aiSourceUsed = 'Cloud Fallback';
     }
 

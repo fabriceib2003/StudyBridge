@@ -5,7 +5,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { auth, db, firebaseConfig, getAppCheckStatus, isAppCheckInCooldown, markAppCheckFailure, getAppCheckErrorMessage, ai } from '../services/firebaseService';
 import { checkOnDeviceAIAvailability, InferenceMode } from '../services/aiService';
 import { getDocs, collection, query, limit } from 'firebase/firestore';
-import { getGenerativeModel } from 'firebase/ai';
+import { getGenerativeModel, ThinkingLevel } from 'firebase/ai';
 
 const OWNER_EMAILS = ['fabriceib2003@gmail.com'];
 
@@ -65,15 +65,36 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme: propTheme, setTheme
           aiSourceUsed = "None (Cooldown Active)";
           aiTestSuccess = false;
         } else {
-          const model = getGenerativeModel(ai, {
-            mode: InferenceMode.PREFER_ON_DEVICE,
-            inCloudParams: { model: 'gemini-2.5-flash' }
-          });
-          const res = await model.generateContent("Ping");
-          const text = typeof (res as any).text === 'function' ? (res as any).text() : (res as any).text || (res as any).response?.text() || 'OK';
-          aiTestResult = text ? "Success (Operational)" : "Empty response";
-          aiSourceUsed = (res as any)?.inferenceSource || 'Cloud (Gemini 2.5 Flash)';
-          aiTestSuccess = Boolean(text);
+          const diagnosticModels = ['gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+          let lastDiagErr: any = null;
+          for (const modelName of diagnosticModels) {
+            try {
+              const model = getGenerativeModel(ai, {
+                mode: InferenceMode.PREFER_ON_DEVICE,
+                inCloudParams: {
+                  model: modelName,
+                  generationConfig: {
+                    thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+                    maxOutputTokens: 32
+                  }
+                }
+              });
+              const res = await model.generateContent("Ping", { timeout: 12000 });
+              const text = typeof (res as any).text === 'function' ? (res as any).text() : (res as any).text || (res as any).response?.text() || 'OK';
+              aiTestResult = text ? "Success (Operational)" : "Empty response";
+              aiSourceUsed = (res as any)?.inferenceSource || `Cloud (${modelName})`;
+              aiTestSuccess = Boolean(text);
+              lastDiagErr = null;
+              break;
+            } catch (diagErr: any) {
+              lastDiagErr = diagErr;
+              const msg = (diagErr?.message || String(diagErr)).toLowerCase();
+              if (msg.includes('appcheck') || msg.includes('app check') || msg.includes('recaptcha') || msg.includes('403') || msg.includes('401')) {
+                throw diagErr;
+              }
+            }
+          }
+          if (lastDiagErr) throw lastDiagErr;
         }
       }
     } catch (e: any) {

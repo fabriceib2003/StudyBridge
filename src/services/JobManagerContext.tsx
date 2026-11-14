@@ -149,6 +149,7 @@ export const JobManagerProvider: React.FC<{ children: React.ReactNode; materials
             isOnline: navigator.onLine,
             answerLength: 'detailed',
             explainFocus: job.type === 'ask' ? job.prompt : undefined,
+            abortSignal: controller.signal,
             onProgress: (statusText) => {
               setJobs(prev => prev.map(j => j.id === job.id ? { ...j, progressText: statusText } : j));
             }

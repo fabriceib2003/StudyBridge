@@ -186,6 +186,13 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
   // Active Sub-views (Quiz Arena / Flashcards)
   const [activeView, setActiveView] = useState<'desk' | 'quiz' | 'flashcards'>('desk');
   const [streamingSeconds, setStreamingSeconds] = useState<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   // Streaming timer effect
   useEffect(() => {
@@ -399,6 +406,10 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
       return;
     }
 
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsGenerating(true);
     setCurrentResult(null);
     setLatestSavedResultId(null);
@@ -421,8 +432,10 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
         explainLevel,
         instructionText: instructionText.trim() || undefined,
         studyLanguage: studyLanguage || (typeof localStorage !== 'undefined' ? localStorage.getItem('studybridge_study_language') : null) || 'English',
+        abortSignal: controller.signal,
         onProgress: (status) => setProgressStatus(status),
         onStream: (chunk) => {
+          if (controller.signal.aborted) return;
           setCurrentResult((prev) => prev ? { ...prev, response: chunk } : {
             response: chunk,
             route: 'unknown',
@@ -436,6 +449,8 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
           });
         }
       });
+
+      if (controller.signal.aborted) return;
 
       const fullResult = { ...result, actionType };
       setCurrentResult(fullResult);
@@ -539,12 +554,32 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
 
     } catch (e: any) {
+      if (e?.name === 'AbortError' || controller.signal.aborted) {
+        return;
+      }
       console.error(e);
-      setErrorMessage(e instanceof Error ? e.message : String(e));
+      const rawMsg = e instanceof Error ? e.message : String(e);
+      if (rawMsg.toLowerCase().includes('timeout') || rawMsg.toLowerCase().includes('timed out')) {
+        setErrorMessage("The AI request timed out across available models. Try selecting fewer study materials or click Retry.");
+      } else {
+        setErrorMessage(rawMsg);
+      }
     } finally {
-      setIsGenerating(false);
-      setProgressStatus(null);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        setIsGenerating(false);
+        setProgressStatus(null);
+      }
     }
+  };
+
+  const handleCancelGeneration = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsGenerating(false);
+    setProgressStatus(null);
+    setCurrentResult(null);
+    showToast('Generation cancelled');
   };
 
   const handleCopyText = (text: string, id: string) => {
@@ -1051,12 +1086,23 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
                 {/* Status line & thin progress bar */}
                 <div className="space-y-2 shrink-0 z-20">
-                  <div className="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <div className="flex items-center justify-between gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
                     <span className="flex items-center gap-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
-                      Generating {lastActionType === 'summarize' ? 'summary' : lastActionType === 'explain' ? 'explanation' : lastActionType || 'study material'}... ({Math.floor(streamingSeconds)}s)
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500 shrink-0" />
+                      <span>
+                        Generating {lastActionType === 'summarize' ? 'summary' : lastActionType === 'explain' ? 'explanation' : lastActionType || 'study material'}... ({Math.floor(streamingSeconds)}s)
+                      </span>
                     </span>
-                    <span className="text-[10px] text-slate-400">{progressStatus || 'Streaming AI output'}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] text-slate-400 hidden sm:inline">{progressStatus || 'Streaming AI output'}</span>
+                      <button
+                        type="button"
+                        onClick={handleCancelGeneration}
+                        className="px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                   {/* Thin progress bar */}
                   <div className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -1064,17 +1110,35 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   </div>
                 </div>
 
-                {/* Live Preview of LAST 4 lines of plain text with markdown/latex stripped */}
+                {/* Live Preview */}
                 <div className="flex-1 min-h-0 flex items-end overflow-hidden pt-4">
                   <div className="w-full font-mono text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-line line-clamp-4 select-none">
-                    {currentResult?.response
-                      ? currentResult.response
+                    {currentResult?.response ? (
+                      lastActionType === 'flashcards' ? (
+                        (() => {
+                          const cardCount = (currentResult.response.match(/"front"\s*:/g) || []).length;
+                          return cardCount > 0
+                            ? `Building flashcard deck... ${cardCount} card${cardCount === 1 ? '' : 's'} drafted (${currentResult.response.length} chars)`
+                            : `Receiving flashcard data (${currentResult.response.length} chars)...`;
+                        })()
+                      ) : lastActionType === 'quiz' ? (
+                        (() => {
+                          const qCount = (currentResult.response.match(/"question"\s*:/g) || []).length;
+                          return qCount > 0
+                            ? `Building practice quiz... ${qCount} question${qCount === 1 ? '' : 's'} drafted (${currentResult.response.length} chars)`
+                            : `Receiving quiz data (${currentResult.response.length} chars)...`;
+                        })()
+                      ) : (
+                        currentResult.response
                           .replace(/[*#$`_~[\]()>{}]/g, '')
                           .split('\n')
                           .filter(Boolean)
                           .slice(-4)
                           .join('\n')
-                      : 'Initializing generation...'}
+                      )
+                    ) : (
+                      progressStatus || 'Initializing generation...'
+                    )}
                   </div>
                 </div>
               </div>

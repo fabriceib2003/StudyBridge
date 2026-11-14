@@ -1,7 +1,7 @@
 import { ActionType, InferenceRoute, RoutingMode, OnDeviceAIStatus } from "../types";
 import { getCachedSection, setCachedSection } from "./firestoreService";
 import { auth, ai, getRemoteConfigValue, checkAppCheckToken, isAppCheckInCooldown, markAppCheckFailure, getAppCheckErrorMessage } from "./firebaseService";
-import { getGenerativeModel, InferenceMode, InferenceSource } from "firebase/ai";
+import { getGenerativeModel, InferenceMode, InferenceSource, ThinkingLevel } from "firebase/ai";
 
 export { InferenceMode, InferenceSource };
 
@@ -93,12 +93,19 @@ export async function checkOnDeviceAIAvailability(): Promise<{
     }
 
     let rawStatus = 'no';
-    if (typeof aiApi.capabilities === 'function') {
-      const caps = await aiApi.capabilities();
-      rawStatus = caps?.available || 'no';
-    } else if (typeof aiApi.availability === 'function') {
-      rawStatus = await aiApi.availability();
-    }
+    const checkPromise = (async () => {
+      if (typeof aiApi.capabilities === 'function') {
+        const caps = await aiApi.capabilities();
+        return caps?.available || 'no';
+      } else if (typeof aiApi.availability === 'function') {
+        return await aiApi.availability();
+      }
+      return 'no';
+    })();
+    rawStatus = await Promise.race([
+      checkPromise,
+      new Promise<string>((resolve) => setTimeout(() => resolve('no'), 1500))
+    ]);
 
     if (rawStatus === 'readily' || rawStatus === 'available' || rawStatus === 'yes') {
       return {
@@ -351,6 +358,36 @@ async function computeHash(str: string): Promise<string> {
   return 'djb_' + (hash >>> 0).toString(16);
 }
 
+const MAX_STUDY_TEXT_CHARS = 32000;
+
+/**
+ * Condenses very large study materials (e.g. multi-chapter textbooks) into a
+ * representative sample across beginning, middle, and end so cloud AI
+ * processes the prompt quickly instead of stalling for 60-140s on oversized inputs.
+ */
+function condenseStudyText(text: string, maxChars: number = MAX_STUDY_TEXT_CHARS): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= maxChars) return trimmed;
+
+  const sliceCount = 4;
+  const headerReserve = 240;
+  const chunkBudget = Math.floor((maxChars - headerReserve) / sliceCount);
+  const totalLen = trimmed.length;
+  const sections: string[] = [];
+
+  for (let i = 0; i < sliceCount; i++) {
+    const start = i === 0
+      ? 0
+      : i === sliceCount - 1
+      ? Math.max(0, totalLen - chunkBudget)
+      : Math.floor((totalLen - chunkBudget) * (i / (sliceCount - 1)));
+    const excerpt = trimmed.slice(start, start + chunkBudget).trim();
+    sections.push(`[Excerpt ${i + 1}/${sliceCount}]\n${excerpt}`);
+  }
+
+  return `[Note: Source material was ${totalLen.toLocaleString()} characters and was condensed into representative excerpts for fast analysis.]\n\n` + sections.join('\n\n...\n\n');
+}
+
 export function buildPrompt(options: {
   actionType: ActionType;
   subjectName: string;
@@ -361,6 +398,7 @@ export function buildPrompt(options: {
   instructionText?: string;
   studyLanguage?: string;
 }): string {
+  const preparedText = condenseStudyText(options.text);
   const langRule = options.studyLanguage && options.studyLanguage !== 'English'
     ? `IMPORTANT: You must write your entire response in ${options.studyLanguage}.`
     : `Write your response in English.`;
@@ -375,7 +413,7 @@ STRICT INSTRUCTIONS:
 4. ${langRule}
 
 STUDY MATERIAL:
-${options.text}`;
+${preparedText}`;
   }
 
   if (options.actionType === 'explain') {
@@ -390,7 +428,7 @@ STRICT INSTRUCTIONS:
 4. ${langRule}
 
 CONCEPT / MATERIAL:
-${options.text}`;
+${preparedText}`;
   }
 
   if (options.actionType === 'quiz') {
@@ -413,7 +451,7 @@ STRICT INSTRUCTIONS:
 3. ${langRule}
 
 STUDY MATERIAL:
-${options.text}`;
+${preparedText}`;
   }
 
   if (options.actionType === 'flashcards') {
@@ -434,7 +472,7 @@ STRICT INSTRUCTIONS:
 3. ${langRule}
 
 STUDY MATERIAL:
-${options.text}`;
+${preparedText}`;
   }
 
   if (options.actionType === 'answer') {
@@ -449,10 +487,10 @@ USER QUESTION:
 ${options.instructionText || ''}
 
 STUDY MATERIAL:
-${options.text}`;
+${preparedText}`;
   }
 
-  return `You are StudyBridge. Analyze the following material and provide a detailed study response.\n\nMaterial:\n${options.text}`;
+  return `You are StudyBridge. Analyze the following material and provide a detailed study response.\n\nMaterial:\n${preparedText}`;
 }
 
 export interface ExecuteAIOptions {
@@ -467,6 +505,7 @@ export interface ExecuteAIOptions {
   explainLevel?: 'Beginner' | 'Student' | 'Advanced';
   instructionText?: string;
   studyLanguage?: string;
+  abortSignal?: AbortSignal;
   onProgress?: (status: string) => void;
   onStream?: (chunk: string) => void;
 }
@@ -488,11 +527,17 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
     throw new Error(getAppCheckErrorMessage());
   }
 
+  if (options.abortSignal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError');
+  }
+
   const startTime = performance.now();
+  options.onProgress?.("Preparing study prompt...");
   const prompt = buildPrompt({ ...options });
   const promptBytes = new TextEncoder().encode(prompt).length;
 
   const isOffline = typeof navigator !== 'undefined' ? (!navigator.onLine || !options.isOnline) : !options.isOnline;
+  options.onProgress?.("Checking AI availability...");
   const { available: onDeviceAvailable } = await checkOnDeviceAIAvailability();
 
   if (isOffline && !onDeviceAvailable) {
@@ -509,6 +554,7 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
 
   // Verify App Check token before AI call when online
   if (!isOffline) {
+    options.onProgress?.("Verifying security session...");
     const appCheckValid = await checkAppCheckToken();
     if (!appCheckValid && (options.manualMode === 'force-cloud' || !onDeviceAvailable)) {
       throw new Error(getAppCheckErrorMessage());
@@ -534,56 +580,170 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
   if (!ai) {
     throw new Error("Firebase AI Logic is not initialized.");
   }
+  const aiInstance = ai;
 
-  const model = getGenerativeModel(ai, {
-    mode: decision.inferenceModeUsed as InferenceMode,
-    inCloudParams: {
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        temperature: (options.actionType === 'quiz' || options.actionType === 'flashcards') ? 0.2 : 0.7,
-        maxOutputTokens: 2500,
-        ...(options.actionType === 'quiz' || options.actionType === 'flashcards' ? { responseMimeType: 'application/json' } : {})
+  const CLOUD_MODEL_CHAIN = [
+    'gemini-3.1-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-3.5-flash-lite',
+    'gemini-3.8-flash'
+  ];
+
+  const isStructuredJson = options.actionType === 'quiz' || options.actionType === 'flashcards';
+  const createModel = (modelName: string, thinkingLevel?: ThinkingLevel) =>
+    getGenerativeModel(aiInstance, {
+      mode: decision.inferenceModeUsed as InferenceMode,
+      inCloudParams: {
+        model: modelName,
+        generationConfig: {
+          temperature: isStructuredJson ? 0.2 : 0.7,
+          maxOutputTokens: 4096,
+          ...(thinkingLevel ? { thinkingConfig: { thinkingLevel } } : {}),
+          ...(isStructuredJson ? { responseMimeType: 'application/json' } : {})
+        }
       }
-    }
-  });
+    });
 
-  let streamResult;
-  try {
-    streamResult = await model.generateContentStream(prompt);
-  } catch (err: any) {
-    const errMsg = (err?.message || String(err)).toLowerCase();
-    if (errMsg.includes('appcheck') || errMsg.includes('app-check') || errMsg.includes('recaptcha')) {
-      markAppCheckFailure();
-      throw new Error(getAppCheckErrorMessage());
-    }
-    throw err;
-  }
+  const requestOpts = {
+    timeout: 25000,
+    ...(options.abortSignal ? { signal: options.abortSignal } : {})
+  };
+
+  const isAppCheckError = (msg: string) =>
+    msg.includes('appcheck') || msg.includes('app-check') || msg.includes('recaptcha') || msg.includes('[401') || msg.includes('[403');
+
+  const isRetryableModelError = (err: any) => {
+    const msg = (err?.message || String(err)).toLowerCase();
+    return (
+      msg.includes('[500') ||
+      msg.includes('[503') ||
+      msg.includes('[429') ||
+      msg.includes('[404') ||
+      msg.includes('high demand') ||
+      msg.includes('overloaded') ||
+      msg.includes('unavailable') ||
+      msg.includes('resource_exhausted') ||
+      msg.includes('timed out') ||
+      msg.includes('timeout')
+    );
+  };
 
   let accumulated = "";
+  let firstChunkSeen = false;
+  let finalResponse: any = null;
+  let lastError: any = null;
 
-  try {
-    for await (const chunk of streamResult.stream) {
-      if (!ttftMs) {
-        ttftMs = Math.round(performance.now() - startTime);
+  for (let i = 0; i < CLOUD_MODEL_CHAIN.length; i++) {
+    const modelName = CLOUD_MODEL_CHAIN[i];
+    if (options.abortSignal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+
+    options.onProgress?.(
+      decision.route === 'on-device'
+        ? "Starting On-Device AI..."
+        : i === 0
+        ? `Connecting to ${modelName}...`
+        : `Switching to backup model (${modelName})...`
+    );
+
+    let streamResult;
+    try {
+      const model = createModel(modelName, ThinkingLevel.MINIMAL);
+      streamResult = await model.generateContentStream(prompt, requestOpts);
+    } catch (err: any) {
+      if (options.abortSignal?.aborted || (err?.name === 'AbortError' && !err?.message?.toLowerCase().includes('timeout'))) {
+        throw err;
       }
-      const chunkText = chunk.text();
-      if (chunkText) {
-        accumulated = chunkText;
-        options.onStream?.(accumulated);
+      const errMsg = (err?.message || String(err)).toLowerCase();
+      if (isAppCheckError(errMsg)) {
+        markAppCheckFailure();
+        throw new Error(getAppCheckErrorMessage());
+      }
+      if (errMsg.includes('thinking') || errMsg.includes('invalid_argument') || errMsg.includes('[400')) {
+        try {
+          const fallbackThinkingModel = createModel(modelName, ThinkingLevel.LOW);
+          streamResult = await fallbackThinkingModel.generateContentStream(prompt, requestOpts);
+        } catch (thinkingErr: any) {
+          if (isRetryableModelError(thinkingErr) && i < CLOUD_MODEL_CHAIN.length - 1) {
+            lastError = thinkingErr;
+            continue;
+          }
+          try {
+            const defaultModel = createModel(modelName, undefined);
+            streamResult = await defaultModel.generateContentStream(prompt, requestOpts);
+          } catch (finalThinkingErr: any) {
+            lastError = finalThinkingErr;
+            if (isRetryableModelError(finalThinkingErr) && i < CLOUD_MODEL_CHAIN.length - 1) {
+              continue;
+            }
+            throw finalThinkingErr;
+          }
+        }
+      } else if (isRetryableModelError(err) && i < CLOUD_MODEL_CHAIN.length - 1) {
+        lastError = err;
+        continue;
+      } else {
+        throw err;
       }
     }
-  } catch (err: any) {
-    const errMsg = (err?.message || String(err)).toLowerCase();
-    if (errMsg.includes('appcheck') || errMsg.includes('app-check') || errMsg.includes('recaptcha')) {
-      markAppCheckFailure();
-      throw new Error(getAppCheckErrorMessage());
+
+    options.onProgress?.("Waiting for first AI token...");
+
+    try {
+      for await (const chunk of streamResult.stream) {
+        if (options.abortSignal?.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
+        const chunkText = chunk.text();
+        if (chunkText) {
+          if (!firstChunkSeen) {
+            firstChunkSeen = true;
+            ttftMs = Math.round(performance.now() - startTime);
+            options.onProgress?.(
+              isStructuredJson ? "Receiving structured study data..." : "Streaming AI response..."
+            );
+          }
+          accumulated += chunkText;
+          options.onStream?.(accumulated);
+        }
+      }
+
+      options.onProgress?.(
+        options.actionType === 'flashcards'
+          ? "Formatting flashcards..."
+          : options.actionType === 'quiz'
+          ? "Formatting quiz questions..."
+          : "Finalizing response..."
+      );
+
+      finalResponse = await streamResult.response;
+      fullText = accumulated || finalResponse.text();
+      bytesReceived = new TextEncoder().encode(fullText).length;
+      lastError = null;
+      break;
+    } catch (err: any) {
+      if (options.abortSignal?.aborted || (err?.name === 'AbortError' && !err?.message?.toLowerCase().includes('timeout'))) {
+        throw err;
+      }
+      const errMsg = (err?.message || String(err)).toLowerCase();
+      if (isAppCheckError(errMsg)) {
+        markAppCheckFailure();
+        throw new Error(getAppCheckErrorMessage());
+      }
+      lastError = err;
+      // Only fail over to next model if we haven't started receiving output yet
+      if (!firstChunkSeen && isRetryableModelError(err) && i < CLOUD_MODEL_CHAIN.length - 1) {
+        accumulated = "";
+        continue;
+      }
+      throw err;
     }
-    throw err;
   }
 
-  const finalResponse = await streamResult.response;
-  fullText = accumulated || finalResponse.text();
-  bytesReceived = new TextEncoder().encode(fullText).length;
+  if (lastError && !fullText) {
+    throw lastError;
+  }
 
   const rawSource = (finalResponse as any)?.inferenceSource;
   if (rawSource === InferenceSource.ON_DEVICE || rawSource === 'on_device') {

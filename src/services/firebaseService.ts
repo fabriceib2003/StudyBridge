@@ -16,7 +16,7 @@ import {
   persistentLocalCache, 
   persistentMultipleTabManager 
 } from "firebase/firestore";
-import { getAI, AgentPlatformBackend } from "firebase/ai";
+import { getAI, GoogleAIBackend } from "firebase/ai";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "firebase/app-check";
 import { getRemoteConfig, fetchAndActivate, getValue, RemoteConfig } from "firebase/remote-config";
 
@@ -171,5 +171,5 @@ export function getRemoteConfigValue(key: string, defaultValue: any): any {
   return defaultValue;
 }
 
-// Initialize Firebase AI Logic with AgentPlatformBackend (Vertex AI in Firebase)
-export const ai = app ? getAI(app, { backend: new AgentPlatformBackend('us-central1') }) : null;
+// Initialize Firebase AI Logic with Gemini Developer API backend
+export const ai = app ? getAI(app, { backend: new GoogleAIBackend() }) : null;

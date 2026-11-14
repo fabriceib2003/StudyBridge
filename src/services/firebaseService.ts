@@ -63,25 +63,111 @@ export function markAppCheckFailure(): void {
   appCheckCooldownUntil = Date.now() + 10000;
 }
 
+export type AppCheckMode =
+  | 'recaptcha_enterprise'
+  | 'debug'
+  | 'skipped'
+  | 'missing_site_key'
+  | 'init_error';
+
+export interface AppCheckDiagnostics {
+  hostname: string;
+  inIframe: boolean;
+  mode: AppCheckMode;
+  modeLabel: string;
+  statusLabel: string;
+  statusKind: 'active' | 'skipped' | 'missing_key' | 'failed';
+  tokenObtained: boolean;
+  tokenExpiresAt: number | null;
+}
+
+function formatShortAppCheckError(err: unknown): string {
+  const raw =
+    (err as any)?.code ||
+    (err as any)?.message ||
+    String(err || 'Unknown error');
+  const cleaned = String(raw)
+    .replace(/^FirebaseError:\s*/i, '')
+    .replace(/^AppCheck:\s*/i, '')
+    .trim();
+  return cleaned.length > 60 ? cleaned.slice(0, 57) + '...' : cleaned;
+}
+
+function parseJwtExpiryMillis(jwt: string): number | null {
+  try {
+    const parts = jwt.split('.');
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded));
+    if (typeof payload?.exp === 'number' && Number.isFinite(payload.exp)) {
+      return payload.exp * 1000;
+    }
+  } catch {
+    // Ignore malformed JWT
+  }
+  return null;
+}
+
 // Initialize Firebase App Check with ReCaptchaEnterpriseProvider BEFORE Auth and Firestore
 let appCheck: any = null;
+const appCheckContext: {
+  hostname: string;
+  inIframe: boolean;
+  mode: AppCheckMode;
+  modeLabel: string;
+  initError: string | null;
+} = {
+  hostname: typeof window !== 'undefined' ? window.location.hostname : '',
+  inIframe: false,
+  mode: 'skipped',
+  modeLabel: 'Skipped (local or AI Studio preview only)',
+  initError: null
+};
+
 try {
   if (typeof window !== 'undefined' && app) {
     const hostname = window.location.hostname;
-    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-    const isPreview = hostname.includes('run.app');
-    const isDebugMode = isLocalhost || import.meta.env.VITE_APPCHECK_DEBUG === 'true';
-
-    // Keep debug-token behavior on localhost or when VITE_APPCHECK_DEBUG is "true"
-    if (isDebugMode && typeof self !== 'undefined') {
-      (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    let inIframe = false;
+    try {
+      inIframe = window.self !== window.top;
+    } catch {
+      inIframe = true;
     }
 
-    // Initialize App Check on production (e.g. studydesk.up.railway.app) or when debug is requested/localhost.
-    // In preview (run.app), bypass unless VITE_APPCHECK_DEBUG="true" to prevent 403 errors from unregistered tokens.
-    const shouldInitialize = false; // Bypassed to prevent 403 errors
-    if (shouldInitialize) {
-      const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeCzR8uAAAAAMAQ2XNxbyaTHy-8nZ8eg_P2XWnW";
+    appCheckContext.hostname = hostname;
+    appCheckContext.inIframe = inIframe;
+
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isAiStudioPreviewIframe = hostname.endsWith('.run.app') && inIframe;
+    const isDebugFlag = import.meta.env.VITE_APPCHECK_DEBUG === 'true';
+    const siteKey = (import.meta.env.VITE_RECAPTCHA_SITE_KEY || '').trim();
+
+    if (isLocalhost || isDebugFlag) {
+      if (typeof self !== 'undefined') {
+        (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+      }
+      console.info(
+        '[App Check] Debug token flow enabled. Register the printed App Check debug token in Firebase Console > App Check.'
+      );
+      appCheckContext.mode = 'debug';
+      appCheckContext.modeLabel = 'Debug token';
+      appCheck = initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider(siteKey || 'debug-token-only'),
+        isTokenAutoRefreshEnabled: true
+      });
+    } else if (isAiStudioPreviewIframe) {
+      appCheckContext.mode = 'skipped';
+      appCheckContext.modeLabel = 'Skipped (AI Studio preview iframe)';
+      appCheck = null;
+    } else if (!siteKey) {
+      appCheckContext.mode = 'missing_site_key';
+      appCheckContext.modeLabel = 'reCAPTCHA Enterprise (missing site key)';
+      appCheckContext.initError = 'VITE_RECAPTCHA_SITE_KEY is missing';
+      appCheck = null;
+    } else {
+      appCheckContext.mode = 'recaptcha_enterprise';
+      appCheckContext.modeLabel = 'reCAPTCHA Enterprise';
       appCheck = initializeAppCheck(app, {
         provider: new ReCaptchaEnterpriseProvider(siteKey),
         isTokenAutoRefreshEnabled: true
@@ -89,6 +175,10 @@ try {
     }
   }
 } catch (e) {
+  const shortErr = formatShortAppCheckError(e);
+  appCheckContext.mode = 'init_error';
+  appCheckContext.modeLabel = 'Initialization failed';
+  appCheckContext.initError = shortErr;
   console.warn("App Check initialization warning:", e);
 }
 
@@ -107,29 +197,92 @@ export function isAppCheckActive(): boolean {
   return Boolean(appCheck);
 }
 
-export async function getAppCheckStatus(): Promise<'active' | 'in_cooldown' | 'bypassed' | 'missing'> {
-  if (isAppCheckInCooldown()) {
-    return 'in_cooldown';
+export async function getAppCheckDiagnostics(): Promise<AppCheckDiagnostics> {
+  const base = {
+    hostname: appCheckContext.hostname || '(unknown)',
+    inIframe: appCheckContext.inIframe,
+    mode: appCheckContext.mode,
+    modeLabel: appCheckContext.modeLabel
+  };
+
+  if (appCheckContext.mode === 'skipped') {
+    return {
+      ...base,
+      statusLabel: 'Skipped (local or AI Studio preview only)',
+      statusKind: 'skipped',
+      tokenObtained: false,
+      tokenExpiresAt: null
+    };
   }
-  if (!appCheck) {
-    return 'bypassed';
+
+  if (appCheckContext.mode === 'missing_site_key') {
+    return {
+      ...base,
+      statusLabel: 'Missing site key',
+      statusKind: 'missing_key',
+      tokenObtained: false,
+      tokenExpiresAt: null
+    };
   }
+
+  if (appCheckContext.mode === 'init_error' || !appCheck) {
+    return {
+      ...base,
+      statusLabel: `Failed: ${appCheckContext.initError || 'Not initialized'}`,
+      statusKind: 'failed',
+      tokenObtained: false,
+      tokenExpiresAt: null
+    };
+  }
+
   try {
     const tokenRes = await getToken(appCheck, false);
     if (tokenRes && tokenRes.token) {
-      return 'active';
+      const expiresAt = parseJwtExpiryMillis(tokenRes.token);
+      return {
+        ...base,
+        statusLabel:
+          appCheckContext.mode === 'debug'
+            ? 'Active (debug token)'
+            : 'Active (reCAPTCHA Enterprise)',
+        statusKind: 'active',
+        tokenObtained: true,
+        tokenExpiresAt: expiresAt
+      };
     }
-    return 'missing';
-  } catch {
-    return 'missing';
+    return {
+      ...base,
+      statusLabel: 'Failed: Empty token returned',
+      statusKind: 'failed',
+      tokenObtained: false,
+      tokenExpiresAt: null
+    };
+  } catch (err) {
+    return {
+      ...base,
+      statusLabel: `Failed: ${formatShortAppCheckError(err)}`,
+      statusKind: 'failed',
+      tokenObtained: false,
+      tokenExpiresAt: null
+    };
   }
+}
+
+export async function getAppCheckStatus(): Promise<AppCheckDiagnostics['statusKind']> {
+  const diag = await getAppCheckDiagnostics();
+  return diag.statusKind;
 }
 
 export async function checkAppCheckToken(): Promise<boolean> {
   if (isAppCheckInCooldown()) {
     return false;
   }
-  if (!appCheck) return true; // Debug / bypass mode
+  if (appCheckContext.mode === 'skipped') {
+    return true;
+  }
+  if (!appCheck) {
+    return false;
+  }
   try {
     const tokenRes = await getToken(appCheck, false);
     if (!tokenRes || !tokenRes.token) {
@@ -137,7 +290,7 @@ export async function checkAppCheckToken(): Promise<boolean> {
       return false;
     }
     return true;
-  } catch (err) {
+  } catch {
     markAppCheckFailure();
     return false;
   }

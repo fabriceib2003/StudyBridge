@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Brain, Sparkles, Shield, ArrowLeft, CheckCircle2, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
-import { auth, db, firebaseConfig, getAppCheckStatus, isAppCheckInCooldown, markAppCheckFailure, getAppCheckErrorMessage, ai } from '../services/firebaseService';
+import { auth, db, firebaseConfig, getAppCheckDiagnostics, AppCheckDiagnostics, isAppCheckInCooldown, markAppCheckFailure, ai } from '../services/firebaseService';
 import { checkOnDeviceAIAvailability, InferenceMode } from '../services/aiService';
 import { getDocs, collection, query, limit } from 'firebase/firestore';
 import { getGenerativeModel, ThinkingLevel } from 'firebase/ai';
@@ -34,7 +34,7 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
     onlineStatus: boolean;
     serviceWorkerActive: boolean;
     persistenceActive: boolean;
-    appCheckStatus: 'active' | 'in_cooldown' | 'bypassed' | 'missing';
+    appCheck: AppCheckDiagnostics;
   } | null>(null);
 
   const runReadinessCheck = async () => {
@@ -55,7 +55,7 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
       firestoreReachable = false;
     }
 
-    const appCheckStatus = await getAppCheckStatus();
+    const appCheck = await getAppCheckDiagnostics();
 
     try {
       if (ai) {
@@ -129,7 +129,7 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
       onlineStatus: typeof navigator !== 'undefined' ? navigator.onLine : true,
       serviceWorkerActive: typeof navigator !== 'undefined' && 'serviceWorker' in navigator && Boolean(navigator.serviceWorker.controller),
       persistenceActive,
-      appCheckStatus
+      appCheck
     });
 
     setReadinessRunning(false);
@@ -266,37 +266,64 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
                   {readinessResults.persistenceActive ? <CheckCircle2 className="w-4 h-4 text-[var(--success)]" /> : <XCircle className="w-4 h-4 text-[var(--danger)]" />}
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]">
-                  <span className="font-medium text-[var(--text-secondary)]">App Check Status</span>
-                  {readinessResults.appCheckStatus === 'active' ? (
-                    <span className="flex items-center gap-1.5 text-[var(--success)] font-semibold text-xs">
-                      <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
-                      Active Token
-                    </span>
-                  ) : readinessResults.appCheckStatus === 'bypassed' ? (
-                    <span className="text-[var(--muted)] text-[11px] bg-[var(--surface)] px-2 py-0.5 rounded border border-[var(--border)]">
-                      Bypassed in Preview
-                    </span>
-                  ) : readinessResults.appCheckStatus === 'in_cooldown' ? (
-                    <span className="text-[var(--warning)] text-[11px] bg-[var(--warning-bg)] px-2 py-0.5 rounded border border-[var(--warning-border)]">
-                      Cooldown (10s)
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-[var(--danger)] font-semibold text-xs">
-                      <XCircle className="w-4 h-4 text-[var(--danger)]" />
-                      Token Missing
-                    </span>
-                  )}
+                <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] gap-2">
+                  <span className="font-medium text-[var(--text-secondary)]">Host &amp; App Check Mode</span>
+                  <div className="text-right">
+                    <div className="font-mono text-[11px] font-semibold text-[var(--text)]">
+                      {readinessResults.appCheck.hostname}{readinessResults.appCheck.inIframe ? ' (iframe)' : ''}
+                    </div>
+                    <div className="text-[11px] text-[var(--muted)]">
+                      Mode: {readinessResults.appCheck.modeLabel}
+                    </div>
+                  </div>
                 </div>
 
-                {readinessResults.appCheckStatus === 'bypassed' && !readinessResults.aiTestSuccess && (
-                  <div className="col-span-1 sm:col-span-2 p-3 rounded-xl bg-[var(--warning-bg)] border border-[var(--warning-border)] text-[var(--warning)] text-xs leading-relaxed">
-                    <p className="font-semibold mb-1">Why is this test failing in preview?</p>
+                <div className="col-span-1 sm:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]">
+                  <span className="font-medium text-[var(--text-secondary)]">App Check Status</span>
+                  <div className="flex flex-col sm:items-end gap-1">
+                    {readinessResults.appCheck.statusKind === 'active' ? (
+                      <span className="flex items-center gap-1.5 text-[var(--success)] font-semibold text-xs">
+                        <CheckCircle2 className="w-4 h-4 text-[var(--success)] shrink-0" />
+                        <span>{readinessResults.appCheck.statusLabel}</span>
+                      </span>
+                    ) : readinessResults.appCheck.statusKind === 'skipped' ? (
+                      <span className="text-[var(--muted)] text-[11px] font-medium bg-[var(--surface)] px-2 py-0.5 rounded border border-[var(--border)]">
+                        {readinessResults.appCheck.statusLabel}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-[var(--danger)] font-semibold text-xs">
+                        <XCircle className="w-4 h-4 text-[var(--danger)] shrink-0" />
+                        <span>{readinessResults.appCheck.statusLabel}</span>
+                      </span>
+                    )}
+                    <span className="text-[11px] text-[var(--muted)]">
+                      Token obtained: <strong>{readinessResults.appCheck.tokenObtained ? 'Yes' : 'No'}</strong>
+                      {readinessResults.appCheck.tokenObtained && (
+                        <>
+                          {' '}· Expires:{' '}
+                          {readinessResults.appCheck.tokenExpiresAt
+                            ? new Date(readinessResults.appCheck.tokenExpiresAt).toLocaleString()
+                            : 'Unavailable'}
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {readinessResults.appCheck.statusKind === 'missing_key' && (
+                  <div className="col-span-1 sm:col-span-2 p-3 rounded-xl bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)] text-xs leading-relaxed">
+                    <p className="font-semibold mb-1">Missing reCAPTCHA Enterprise Site Key</p>
                     <p>
-                      Your Firebase Console currently has <strong>App Check Enforcement</strong> enabled on Vertex AI. On production (<code>studydesk.up.railway.app</code>), reCAPTCHA Enterprise passes automatically. In this preview iframe, Google blocks requests without an App Check token.
+                      <code>VITE_RECAPTCHA_SITE_KEY</code> is not set for host <code>{readinessResults.appCheck.hostname}</code>. Set <code>VITE_RECAPTCHA_SITE_KEY</code> in your deployment environment variables and rebuild so Firebase App Check can issue tokens.
                     </p>
-                    <p className="mt-1.5 text-[11px] opacity-90">
-                      To test in preview: register debug token <code className="bg-[var(--surface)] px-1 py-0.5 rounded font-mono text-[var(--text)]">e6f3d4e1-8fe8-4e5d-87a3-f796f93db07f</code> in Firebase Console under App Check, or un-enforce Vertex AI in Firebase Console during testing.
+                  </div>
+                )}
+
+                {readinessResults.appCheck.statusKind === 'skipped' && !readinessResults.aiTestSuccess && (
+                  <div className="col-span-1 sm:col-span-2 p-3 rounded-xl bg-[var(--warning-bg)] border border-[var(--warning-border)] text-[var(--warning)] text-xs leading-relaxed">
+                    <p className="font-semibold mb-1">App Check skipped in AI Studio preview iframe</p>
+                    <p>
+                      Your Firebase Console currently enforces App Check on AI requests. To test in preview, set <code>VITE_APPCHECK_DEBUG=true</code> and register the debug token printed in the browser console under Firebase Console &rarr; App Check.
                     </p>
                   </div>
                 )}

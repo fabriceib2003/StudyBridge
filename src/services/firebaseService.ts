@@ -46,16 +46,6 @@ try {
 }
 
 export { app };
-export const auth = getAuth(app);
-
-// Initialize Firestore with offline persistence
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
-
-export const googleProvider = new GoogleAuthProvider();
 
 // App Check failure cooldown tracking (10-second cooldown per Task 2)
 let appCheckCooldownUntil = 0;
@@ -73,7 +63,7 @@ export function markAppCheckFailure(): void {
   appCheckCooldownUntil = Date.now() + 10000;
 }
 
-// Initialize Firebase App Check with ReCaptchaEnterpriseProvider
+// Initialize Firebase App Check with ReCaptchaEnterpriseProvider BEFORE Auth and Firestore
 let appCheck: any = null;
 try {
   if (typeof window !== 'undefined' && app) {
@@ -91,7 +81,7 @@ try {
     // In preview (run.app), bypass unless VITE_APPCHECK_DEBUG="true" to prevent 403 errors from unregistered tokens.
     const shouldInitialize = !isPreview || isDebugMode;
     if (shouldInitialize) {
-      const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6Lc-Dh8uAAAAAC8aF0lQhxsJph6qF8dO6FJfu_BK";
+      const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeCzR8uAAAAAMAQ2XNxbyaTHy-8nZ8eg_P2XWnW";
       appCheck = initializeAppCheck(app, {
         provider: new ReCaptchaEnterpriseProvider(siteKey),
         isTokenAutoRefreshEnabled: true
@@ -101,6 +91,17 @@ try {
 } catch (e) {
   console.warn("App Check initialization warning:", e);
 }
+
+export const auth = getAuth(app);
+
+// Initialize Firestore with offline persistence
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
+
+export const googleProvider = new GoogleAuthProvider();
 
 export function isAppCheckActive(): boolean {
   return Boolean(appCheck);

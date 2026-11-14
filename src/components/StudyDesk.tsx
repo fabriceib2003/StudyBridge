@@ -631,30 +631,30 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
   }
 
   return (
-    <div className="max-w-[960px] mx-auto px-4 sm:px-6 py-8 space-y-6 animate-fadeIn">
+    <div className="max-w-[960px] mx-auto px-4 sm:px-6 py-8 space-y-6 animate-fadeIn text-[var(--text)]">
       {/* Title & Introduction */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Study Desk</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <h2 className="text-2xl font-bold tracking-tight text-[var(--text)]">Study Desk</h2>
+          <p className="text-sm text-[var(--muted)]">
             Select materials from your subject to analyze, summarize, explain simply, or generate practice tests.
           </p>
         </div>
 
         <button
           onClick={() => setIsManageSubjectsOpen(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-medium transition-colors shadow-sm self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] text-xs font-medium transition-colors shadow-sm self-start sm:self-auto"
         >
-          <Settings className="w-3.5 h-3.5 text-slate-400" />
+          <Settings className="w-3.5 h-3.5 text-[var(--muted)]" />
           Manage Subjects
         </button>
       </div>
 
       {/* Subject Switcher Bar with always-visible "+ New subject" */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm space-y-3">
+      <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-2xl shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Active Subject:</span>
+            <span className="text-xs font-semibold text-[var(--text-secondary)]">Active Subject:</span>
             
             <select
               value={selectedSubjectId}
@@ -666,19 +666,19 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   setSelectedMaterialIds([]);
                 }
               }}
-              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-semibold cursor-pointer shadow-sm"
+              className="bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2 text-xs text-[var(--text)] focus:outline-none focus:border-[var(--primary)] font-semibold cursor-pointer shadow-sm"
             >
               {subjects.map(s => (
                 <option key={s.id} value={s.id}>
                   {s.name} {s.isPrivate ? '(Private: On-Device)' : ''}
                 </option>
               ))}
-              <option value="__NEW__" className="text-blue-600 font-bold">+ New subject</option>
+              <option value="__NEW__" className="text-[var(--primary-accent)] font-bold">+ New subject</option>
             </select>
 
             <button
               onClick={() => setIsInlineCreatingSubject(prev => !prev)}
-              className="px-2.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-xs font-medium flex items-center gap-1 border border-blue-200 dark:border-blue-800/50 transition-colors"
+              className="px-2.5 py-2 rounded-xl bg-[var(--primary-soft-bg)] text-[var(--primary-accent)] hover:opacity-90 text-xs font-medium flex items-center gap-1 border border-[var(--primary-soft-border)] transition-colors"
               title="Add subject without leaving page"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -691,15 +691,15 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
               <button
                 type="button"
                 onClick={() => setShowVisualsModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-full text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1 bg-[var(--accent-flashcards-bg)] text-[var(--accent-flashcards)] border border-[var(--accent-flashcards-border)] rounded-full text-xs font-semibold hover:opacity-90 transition-colors shadow-sm"
               >
-                <Eye className="w-3.5 h-3.5 text-indigo-500" />
+                <Eye className="w-3.5 h-3.5" />
                 View Diagrams ({materialPages.filter(p => !!p.image).length})
               </button>
             )}
             
             {activeSubject?.isPrivate && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--warning)] bg-[var(--warning-bg)] border border-[var(--warning-border)] px-2.5 py-1 rounded-full">
                 <Lock className="w-3 h-3" /> Private Subject
               </span>
             )}
@@ -708,16 +708,16 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
         {/* Inline New Subject Creation */}
         {isInlineCreatingSubject && (
-          <form onSubmit={handleInlineSubjectCreate} className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center gap-2.5 animate-fadeIn">
+          <form onSubmit={handleInlineSubjectCreate} className="bg-[var(--surface-raised)] p-3.5 rounded-xl border border-[var(--border)] flex flex-col sm:flex-row items-center gap-2.5 animate-fadeIn">
             <div className="flex items-center gap-2 flex-1 w-full">
-              <FolderPlus className="w-4 h-4 text-blue-500 shrink-0" />
+              <FolderPlus className="w-4 h-4 text-[var(--primary-accent)] shrink-0" />
               <input
                 type="text"
                 required
                 value={inlineSubName}
                 onChange={(e) => setInlineSubName(e.target.value)}
                 placeholder="New subject title..."
-                className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                className="flex-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)]"
                 autoFocus
               />
             </div>
@@ -732,23 +732,23 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   disabled={!isDeviceAiAvailable}
                   checked={inlineSubIsPrivate}
                   onChange={(e) => setInlineSubIsPrivate(e.target.checked)}
-                  className="rounded text-blue-600 w-3 h-3 disabled:cursor-not-allowed"
+                  className="rounded accent-[var(--primary)] w-3 h-3 disabled:cursor-not-allowed"
                 />
-                <span className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-0.5">
-                  <Lock className="w-2.5 h-2.5 text-amber-500" /> Private
+                <span className="text-[11px] text-[var(--text-secondary)] flex items-center gap-0.5">
+                  <Lock className="w-2.5 h-2.5 text-[var(--warning)]" /> Private
                 </span>
               </label>
 
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium shadow"
+                className="px-3 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-lg text-xs font-medium shadow"
               >
                 Create
               </button>
               <button
                 type="button"
                 onClick={() => setIsInlineCreatingSubject(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600"
+                className="p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -757,9 +757,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
         )}
 
         {/* Source Material Selection Chips */}
-        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
               {selectedMaterialIds.length} of {subjectMaterials.filter(m => m.status === 'Ready').length} sources selected
             </span>
             <div className="flex gap-3">
@@ -771,7 +771,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                     sessionStorage.setItem(`studybridge_selected_mats_${selectedSubjectId}`, JSON.stringify(readyIds));
                   }
                 }}
-                className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-[11px] text-[var(--primary-accent)] hover:underline"
               >
                 Select all
               </button>
@@ -782,7 +782,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                     sessionStorage.setItem(`studybridge_selected_mats_${selectedSubjectId}`, JSON.stringify([]));
                   }
                 }}
-                className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-white underline"
+                className="text-[11px] text-[var(--muted)] hover:text-[var(--text)] underline"
               >
                 Clear
               </button>
@@ -790,13 +790,13 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
           </div>
 
           {subjectMaterials.length === 0 ? (
-            <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+            <div className="p-4 rounded-xl border border-dashed border-[var(--border)] text-center space-y-1">
+              <p className="text-xs text-[var(--muted)]">
                 No materials in "{activeSubject?.name || 'this subject'}" yet.
               </p>
               <button
                 onClick={() => navigate('/materials')}
-                className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                className="text-xs text-[var(--primary-accent)] font-semibold hover:underline"
               >
                 Import materials in Library &rarr;
               </button>
@@ -818,16 +818,16 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                         onClick={() => handleToggleMaterial(mat.id)}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
                           !isReady
-                            ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800/40 text-slate-400 border-dashed border-slate-200 dark:border-slate-800'
+                            ? 'opacity-50 cursor-not-allowed bg-[var(--surface-raised)] text-[var(--muted)] border-dashed border-[var(--border)]'
                             : isSelected
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                            ? 'bg-[var(--primary)] text-[var(--primary-text)] border-[var(--primary)] shadow-md'
+                            : 'bg-[var(--surface-raised)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--hover)]'
                         }`}
                       >
-                        <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${isSelected && isReady ? 'text-white' : 'text-slate-400'}`} />
+                        <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${isSelected && isReady ? 'text-[var(--primary-text)]' : 'text-[var(--muted)]'}`} />
                         <span className="truncate flex-1 text-left">{mat.title}</span>
                         {!isReady && (
-                          <span className="text-[10px] text-slate-400 shrink-0 italic">
+                          <span className="text-[10px] text-[var(--muted)] shrink-0 italic">
                             ({mat.status || 'Extracting'})
                           </span>
                         )}
@@ -836,25 +836,25 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   })}
               </div>
               {subjectMaterials.length > MATERIALS_PER_PAGE && (
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)] text-xs">
+                  <span className="text-[11px] text-[var(--muted)]">
                     Showing {(materialsPage - 1) * MATERIALS_PER_PAGE + 1}–{Math.min(materialsPage * MATERIALS_PER_PAGE, subjectMaterials.length)} of {subjectMaterials.length} materials
                   </span>
                   <div className="flex items-center gap-1.5">
                     <button
                       disabled={materialsPage === 1}
                       onClick={() => setMaterialsPage(prev => Math.max(1, prev - 1))}
-                      className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs"
+                      className="px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 text-xs font-medium hover:bg-[var(--hover)] transition-colors shadow-xs"
                     >
                       Previous
                     </button>
-                    <span className="text-xs font-medium text-slate-600 dark:text-slate-300 px-1">
+                    <span className="text-xs font-medium text-[var(--text-secondary)] px-1">
                       {materialsPage} / {Math.ceil(subjectMaterials.length / MATERIALS_PER_PAGE)}
                     </span>
                     <button
                       disabled={materialsPage >= Math.ceil(subjectMaterials.length / MATERIALS_PER_PAGE)}
                       onClick={() => setMaterialsPage(prev => Math.min(Math.ceil(subjectMaterials.length / MATERIALS_PER_PAGE), prev + 1))}
-                      className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs"
+                      className="px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 text-xs font-medium hover:bg-[var(--hover)] transition-colors shadow-xs"
                     >
                       Next
                     </button>
@@ -865,7 +865,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
           )}
 
           {isLoadingMaterials && (
-            <div className="flex items-center gap-1.5 text-xs text-blue-500 pt-1">
+            <div className="flex items-center gap-1.5 text-xs text-[var(--primary-accent)] pt-1">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               <span>Loading text & diagrams from selected sources...</span>
             </div>
@@ -878,15 +878,15 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
         
         {/* Left Column: Controls, Quick Text, AI Actions */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-5 shadow-sm space-y-4">
             
             {/* Shared Instruction Field */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-[var(--text-secondary)]">
                   Tell the AI what you need (optional)
                 </label>
-                <span className={`text-[10px] ${instructionText.length > 500 ? 'text-rose-500' : 'text-slate-400'}`}>
+                <span className={`text-[10px] ${instructionText.length > 500 ? 'text-[var(--danger)]' : 'text-[var(--muted)]'}`}>
                   {instructionText.length}/500
                 </span>
               </div>
@@ -895,20 +895,20 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                 value={instructionText}
                 onChange={(e) => setInstructionText(e.target.value.slice(0, 500))}
                 placeholder="e.g. Compare AASHTO and USCS, explain Atterberg limits..."
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 leading-relaxed"
+                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl p-3 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] leading-relaxed"
               />
               <div className="flex gap-2">
                 <button
                   onClick={() => handleAction('answer')}
                   disabled={isGenerating || selectedMaterialIds.length === 0 || !instructionText.trim()}
-                  className="flex-1 flex items-center justify-center gap-1.5 p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all disabled:opacity-50 shadow-sm"
+                  className="flex-1 flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all disabled:opacity-50 shadow-sm"
                 >
                   <Sparkles className="w-4 h-4" />
                   Ask AI
                 </button>
                 <button
                   onClick={() => setInstructionText('')}
-                  className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
+                  className="p-3 rounded-xl bg-[var(--surface-raised)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--hover-strong)] border border-[var(--border)] transition-colors"
                   title="Clear instruction"
                 >
                   <X className="w-4 h-4" />
@@ -917,8 +917,8 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
             </div>
 
             {/* Explain Simply Controls (Audience level only) */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-2">
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+            <div className="bg-[var(--surface-raised)] p-3.5 rounded-2xl border border-[var(--border)] space-y-2">
+              <span className="text-xs font-semibold text-[var(--text)] flex items-center gap-1.5">
                 Explain Simply Audience
               </span>
               <div className="grid grid-cols-3 gap-1.5">
@@ -929,8 +929,8 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                     onClick={() => setExplainLevel(lvl)}
                     className={`py-1.5 px-2 rounded-xl text-xs font-medium text-center transition-all ${
                       explainLevel === lvl
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                        ? 'bg-[var(--primary)] text-[var(--primary-text)] shadow-sm'
+                        : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--border-strong)]'
                     }`}
                   >
                     {lvl}
@@ -941,7 +941,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
             {/* Route Preview with Unified Route Label */}
             <div className={`p-3 rounded-2xl border flex items-center gap-2.5 text-xs ${livePreviewLabel.bgClass} ${livePreviewLabel.borderClass} ${livePreviewLabel.colorClass}`}>
-              <Zap className="w-4 h-4 shrink-0 text-amber-500" />
+              <Zap className="w-4 h-4 shrink-0 text-[var(--warning)]" />
               <div className="truncate">
                 <span className="font-semibold">Route Preview:</span> {livePreviewLabel.name} — {livePreviewLabel.subText}
               </div>
@@ -949,9 +949,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
             {/* Private Subject Blocked Banner */}
             {activeSubject?.isPrivate && !isDeviceAiAvailable && (
-              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs space-y-1">
+              <div className="p-3 rounded-2xl bg-[var(--warning-bg)] border border-[var(--warning-border)] text-[var(--warning)] text-xs space-y-1">
                 <span className="font-semibold flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-amber-500" />
+                  <Lock className="w-3.5 h-3.5" />
                   Private Subject — AI Requests Blocked
                 </span>
                 <p className="text-[11px] leading-relaxed">
@@ -963,11 +963,11 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
             {/* Action Buttons */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                <span className="text-[11px] font-semibold text-[var(--muted)] uppercase tracking-wider block">
                   Execute AI Action
                 </span>
                 {selectedMaterialIds.length === 0 && (
-                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
+                  <span className="text-[11px] text-[var(--warning)] font-semibold">
                     Select at least one source
                   </span>
                 )}
@@ -978,9 +978,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   onClick={() => handleAction('explain')}
                   disabled={isGenerating || selectedMaterialIds.length === 0 || !effectiveText.trim() || (activeSubject?.isPrivate && !isDeviceAiAvailable)}
                   title={activeSubject?.isPrivate && !isDeviceAiAvailable ? "Private subjects require on-device AI, which is unavailable in this browser." : undefined}
-                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
+                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
                 >
-                  <Sparkles className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
+                  <Sparkles className="w-4 h-4 text-[var(--accent-explanation)] group-hover:scale-110 transition-transform" />
                   Explain Simply
                 </button>
 
@@ -988,9 +988,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   onClick={() => handleAction('summarize')}
                   disabled={isGenerating || selectedMaterialIds.length === 0 || !effectiveText.trim() || (activeSubject?.isPrivate && !isDeviceAiAvailable)}
                   title={activeSubject?.isPrivate && !isDeviceAiAvailable ? "Private subjects require on-device AI, which is unavailable in this browser." : undefined}
-                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
+                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
                 >
-                  <BookOpen className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+                  <BookOpen className="w-4 h-4 text-[var(--accent-summary)] group-hover:scale-110 transition-transform" />
                   Summarize
                 </button>
 
@@ -998,9 +998,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   onClick={() => handleAction('quiz')}
                   disabled={isGenerating || selectedMaterialIds.length === 0 || !effectiveText.trim() || (activeSubject?.isPrivate && !isDeviceAiAvailable)}
                   title={activeSubject?.isPrivate && !isDeviceAiAvailable ? "Private subjects require on-device AI, which is unavailable in this browser." : undefined}
-                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
+                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
                 >
-                  <HelpCircle className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
+                  <HelpCircle className="w-4 h-4 text-[var(--accent-quiz)] group-hover:scale-110 transition-transform" />
                   5-Q Quiz Arena
                 </button>
 
@@ -1008,9 +1008,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   onClick={() => handleAction('flashcards')}
                   disabled={isGenerating || selectedMaterialIds.length === 0 || !effectiveText.trim() || (activeSubject?.isPrivate && !isDeviceAiAvailable)}
                   title={activeSubject?.isPrivate && !isDeviceAiAvailable ? "Private subjects require on-device AI, which is unavailable in this browser." : undefined}
-                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
+                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
                 >
-                  <Layers className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform" />
+                  <Layers className="w-4 h-4 text-[var(--accent-flashcards)] group-hover:scale-110 transition-transform" />
                   Flashcards
                 </button>
               </div>
@@ -1020,12 +1020,12 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
         {/* Right Column: Fixed-Height AI Output Panel & Latest Result Card */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-sm space-y-4 flex flex-col">
+          <div className="bg-[var(--surface)] border-2 border-[var(--border)] rounded-3xl p-6 sm:p-7 shadow-sm space-y-4 flex flex-col">
             
             {/* Header Status Bar */}
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 flex-wrap gap-2 shrink-0">
-              <span className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-blue-500" />
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 flex-wrap gap-2 shrink-0">
+              <span className="text-sm font-bold text-[var(--text)] flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[var(--primary-accent)]" />
                 AI Output & Academic Reasoning
               </span>
 
@@ -1050,15 +1050,15 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
             {/* Error Box */}
             {errorMessage && (
-              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-2xl p-4 space-y-3 animate-fadeIn shrink-0">
-                <div className="flex items-center gap-2 font-semibold text-rose-700 dark:text-rose-300">
+              <div className="bg-[var(--danger-bg)] border border-[var(--danger-border)] rounded-2xl p-4 space-y-3 animate-fadeIn shrink-0">
+                <div className="flex items-center gap-2 font-semibold text-[var(--danger)]">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>AI Execution Error</span>
                 </div>
-                <p className="text-xs text-rose-600 dark:text-rose-400 leading-relaxed">{errorMessage}</p>
+                <p className="text-xs text-[var(--danger)] leading-relaxed">{errorMessage}</p>
                 <button
                   onClick={() => handleAction(lastActionType!)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-medium hover:bg-rose-700 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--danger-solid)] hover:bg-[var(--danger-solid-hover)] text-[var(--primary-text)] rounded-lg text-xs font-medium transition-colors cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" /> Retry
                 </button>
@@ -1067,12 +1067,12 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
             {/* Empty State */}
             {!isGenerating && !currentResult && !errorMessage && (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-3 text-center shrink-0">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+              <div className="flex flex-col items-center justify-center py-20 text-[var(--muted)] space-y-3 text-center shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-[var(--surface-raised)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)]">
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Ready to study</p>
+                  <p className="text-xs font-semibold text-[var(--text-secondary)]">Ready to study</p>
                   <p className="text-xs max-w-sm">Tick one or more material chips on the left, then click Summarize or Explain Simply.</p>
                 </div>
               </div>
@@ -1080,39 +1080,39 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
             {/* Streaming State (Fixed height ~260px desktop, ~220px mobile) */}
             {isGenerating && (
-              <div className="relative h-[220px] sm:h-[260px] bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col justify-between overflow-hidden">
+              <div className="relative h-[220px] sm:h-[260px] bg-[var(--surface-subtle)] rounded-2xl border border-[var(--border)] p-4 flex flex-col justify-between overflow-hidden">
                 {/* Top fade gradient */}
-                <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-slate-50 dark:from-slate-950 to-transparent pointer-events-none z-10" />
+                <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-[var(--surface-subtle)] to-transparent pointer-events-none z-10" />
 
                 {/* Status line & thin progress bar */}
                 <div className="space-y-2 shrink-0 z-20">
-                  <div className="flex items-center justify-between gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <div className="flex items-center justify-between gap-2 text-xs font-medium text-[var(--text-secondary)]">
                     <span className="flex items-center gap-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500 shrink-0" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary-accent)] shrink-0" />
                       <span>
                         Generating {lastActionType === 'summarize' ? 'summary' : lastActionType === 'explain' ? 'explanation' : lastActionType || 'study material'}... ({Math.floor(streamingSeconds)}s)
                       </span>
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] text-slate-400 hidden sm:inline">{progressStatus || 'Streaming AI output'}</span>
+                      <span className="text-[10px] text-[var(--muted)] hidden sm:inline">{progressStatus || 'Streaming AI output'}</span>
                       <button
                         type="button"
                         onClick={handleCancelGeneration}
-                        className="px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                        className="px-2 py-0.5 rounded-md border border-[var(--border)] bg-[var(--surface)] text-[11px] font-medium text-[var(--text-secondary)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] hover:border-[var(--danger-border)] transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
                   {/* Thin progress bar */}
-                  <div className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-600 rounded-full animate-pulse w-3/4" />
+                  <div className="w-full h-1 bg-[var(--chart-track)] rounded-full overflow-hidden">
+                    <div className="h-full bg-[var(--primary)] rounded-full animate-pulse w-3/4" />
                   </div>
                 </div>
 
                 {/* Live Preview */}
                 <div className="flex-1 min-h-0 flex items-end overflow-hidden pt-4">
-                  <div className="w-full font-mono text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-line line-clamp-4 select-none">
+                  <div className="w-full font-mono text-[11px] text-[var(--muted)] leading-relaxed whitespace-pre-line line-clamp-4 select-none">
                     {currentResult?.response ? (
                       lastActionType === 'flashcards' ? (
                         (() => {
@@ -1146,17 +1146,17 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
             {/* Finished Result State (Fixed height container with result card) */}
             {currentResult && !isGenerating && !errorMessage && (
-              <div className="h-[240px] sm:h-[280px] bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 flex flex-col justify-between overflow-hidden">
+              <div className="h-[240px] sm:h-[280px] bg-[var(--surface-subtle)] rounded-2xl border border-[var(--border)] p-5 flex flex-col justify-between overflow-hidden">
                 
                 {/* Top info */}
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-0.5 rounded-full border ${
-                      currentResult.actionType === 'summarize' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
-                      currentResult.actionType === 'explain' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' :
-                      currentResult.actionType === 'quiz' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                      currentResult.actionType === 'flashcards' ? 'bg-purple-500/10 text-purple-600 border-purple-500/20' :
-                      'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20'
+                      currentResult.actionType === 'summarize' ? 'bg-[var(--accent-summary-bg)] text-[var(--accent-summary)] border-[var(--accent-summary-border)]' :
+                      currentResult.actionType === 'explain' ? 'bg-[var(--accent-explanation-bg)] text-[var(--accent-explanation)] border-[var(--accent-explanation-border)]' :
+                      currentResult.actionType === 'quiz' ? 'bg-[var(--accent-quiz-bg)] text-[var(--accent-quiz)] border-[var(--accent-quiz-border)]' :
+                      currentResult.actionType === 'flashcards' ? 'bg-[var(--accent-flashcards-bg)] text-[var(--accent-flashcards)] border-[var(--accent-flashcards-border)]' :
+                      'bg-[var(--accent-answer-bg)] text-[var(--accent-answer)] border-[var(--accent-answer-border)]'
                     }`}>
                       {currentResult.actionType === 'summarize' ? 'summary' :
                        currentResult.actionType === 'explain' ? 'explanation' :
@@ -1178,36 +1178,36 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                           </span>
                         );
                       })()}
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-[var(--success-bg)] text-[var(--success)] border border-[var(--success-border)] px-2 py-0.5 rounded-full">
                         <Cloud className="w-2.5 h-2.5" />
                         Saved
                       </span>
                     </div>
                   </div>
 
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                  <h3 className="text-xs sm:text-sm font-bold text-[var(--text)] truncate">
                     {(currentResult.actionType === 'answer' || currentResult.actionType === 'custom')
                       ? (instructionText.trim() || 'Answer')
                       : (latestSavedResultId ? savedResults.find(r => r.id === latestSavedResultId)?.title || `${currentResult.actionType} result` : `${currentResult.actionType} result`)}
                   </h3>
 
                   {/* 3-line plain-text preview with Markdown and LaTeX symbols stripped */}
-                  <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3 select-none">
+                  <div className="text-xs text-[var(--text-secondary)] leading-relaxed line-clamp-3 select-none">
                     {currentResult.response.replace(/[*#$`_~[\]()>{}]/g, '').trim()}
                   </div>
                 </div>
 
                 {/* Bottom Actions & Meta */}
-                <div className="pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2 shrink-0">
+                <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between flex-wrap gap-2 shrink-0">
                   <div className="flex items-center gap-2">
                     {/* Secondary Copy button for summary and explanation only */}
                     {(currentResult.actionType === 'summarize' || currentResult.actionType === 'explain') && (
                       <button
                         onClick={() => handleCopyText(currentResult.response, 'current')}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 text-xs font-medium cursor-pointer min-h-[36px]"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] text-xs font-medium cursor-pointer min-h-[36px]"
                         title="Copy content"
                       >
-                        {copiedResultId === 'current' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedResultId === 'current' ? <Check className="w-3.5 h-3.5 text-[var(--success)]" /> : <Copy className="w-3.5 h-3.5" />}
                         <span>{copiedResultId === 'current' ? 'Copied' : 'Copy'}</span>
                       </button>
                     )}
@@ -1221,7 +1221,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                         else if (currentResult.actionType === 'flashcards') setActiveView('flashcards');
                         else if (latestSavedResultId) navigate(`/results/${latestSavedResultId}`);
                       }}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-sm cursor-pointer whitespace-nowrap min-h-[36px]"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-semibold text-xs shadow-sm cursor-pointer whitespace-nowrap min-h-[36px]"
                     >
                       <span>
                         {currentResult.actionType === 'summarize' ? 'Open summary' :
@@ -1240,7 +1240,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
             {/* Bottom Meta Bar (time in seconds & route) */}
             {currentResult && !isGenerating && !errorMessage && (
-              <div className="pt-2 text-[11px] text-slate-500 flex items-center justify-between shrink-0">
+              <div className="pt-2 text-[11px] text-[var(--muted)] flex items-center justify-between shrink-0">
                 <span>
                   Time: <strong>{((currentResult.latencyMs || 0) / 1000).toFixed(1)}s</strong>
                 </span>
@@ -1278,27 +1278,27 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                         onClick={() => { setActiveFilter(filter); setResultsPage(1); }}
                         className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
                           activeFilter === filter 
-                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' 
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            ? 'bg-[var(--text)] text-[var(--bg-app)]' 
+                            : 'bg-[var(--surface-raised)] text-[var(--muted)] hover:bg-[var(--hover-strong)] hover:text-[var(--text)]'
                         }`}
                       >
                         {filter}
                       </button>
                     ))}
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] block">
                     {activeFilter} Results ({filteredResults.length})
                   </span>
 
                   {totalResultsPages > 1 && (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 mr-1">
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
+                      <span className="text-[11px] text-[var(--muted)] mr-1">
                         Page {currentPage} of {totalResultsPages}
                       </span>
                       <button
                         onClick={() => setResultsPage(p => Math.max(1, p - 1))}
                         disabled={currentPage <= 1}
-                        className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors inline-flex items-center gap-1 shadow-xs"
+                        className="px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--hover)] transition-colors inline-flex items-center gap-1 shadow-xs"
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
                         Prev
@@ -1306,7 +1306,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                       <button
                         onClick={() => setResultsPage(p => Math.min(totalResultsPages, p + 1))}
                         disabled={currentPage >= totalResultsPages}
-                        className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors inline-flex items-center gap-1 shadow-xs"
+                        className="px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--hover)] transition-colors inline-flex items-center gap-1 shadow-xs"
                       >
                         Next
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -1330,24 +1330,24 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
                     const typeName = isSummary ? 'Summary' : isExplanation ? 'Explanation' : isQuiz ? 'Quiz' : isFlashcards ? 'Flashcards' : 'Answer';
                     const badgeColorClass = isSummary 
-                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20' 
+                      ? 'bg-[var(--accent-summary-bg)] text-[var(--accent-summary)] border-[var(--accent-summary-border)]' 
                       : isExplanation 
-                      ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20' 
+                      ? 'bg-[var(--accent-explanation-bg)] text-[var(--accent-explanation)] border-[var(--accent-explanation-border)]' 
                       : isQuiz 
-                      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20' 
+                      ? 'bg-[var(--accent-quiz-bg)] text-[var(--accent-quiz)] border-[var(--accent-quiz-border)]' 
                       : isFlashcards
-                      ? 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20'
-                      : 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20';
+                      ? 'bg-[var(--accent-flashcards-bg)] text-[var(--accent-flashcards)] border-[var(--accent-flashcards-border)]'
+                      : 'bg-[var(--accent-answer-bg)] text-[var(--accent-answer)] border-[var(--accent-answer-border)]';
 
                     const typeIcon = isSummary 
-                      ? <BookOpen className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      ? <BookOpen className="w-3 h-3 text-[var(--accent-summary)] shrink-0" />
                       : isExplanation 
-                      ? <Sparkles className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                      ? <Sparkles className="w-3 h-3 text-[var(--accent-explanation)] shrink-0" />
                       : isQuiz 
-                      ? <HelpCircle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                      ? <HelpCircle className="w-3 h-3 text-[var(--accent-quiz)] shrink-0" />
                       : isFlashcards
-                      ? <Layers className="w-3 h-3 text-purple-600 dark:text-purple-400 shrink-0" />
-                      : <HelpCircle className="w-3 h-3 text-slate-600 dark:text-slate-400 shrink-0" />;
+                      ? <Layers className="w-3 h-3 text-[var(--accent-flashcards)] shrink-0" />
+                      : <HelpCircle className="w-3 h-3 text-[var(--accent-answer)] shrink-0" />;
 
                     // Real titles: if existing title is a fragment, display fallback
                     let displayTitle = res.title;
@@ -1382,7 +1382,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                     return (
                       <div
                         key={res.id}
-                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm space-y-2.5 hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between group"
+                        className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-2xl shadow-sm space-y-2.5 hover:border-[var(--border-strong)] transition-all flex flex-col justify-between group"
                       >
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between gap-1">
@@ -1395,8 +1395,8 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                               {/* Sync Status Badge */}
                               <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
                                 res.hasPendingWrites
-                                  ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
-                                  : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
+                                  ? 'bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning-border)]'
+                                  : 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success-border)]'
                               }`}>
                                 <Cloud className="w-2.5 h-2.5" />
                                 {res.hasPendingWrites ? 'Waiting to sync' : 'Saved'}
@@ -1408,10 +1408,10 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                                 disabled={isDeleting}
                                 title="Delete study result from cloud and device"
                                 aria-label="Delete study result"
-                                className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                                className="p-1 rounded-lg text-[var(--muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] transition-colors cursor-pointer"
                               >
                                 {isDeleting ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-red-500" />
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--danger)]" />
                                 ) : (
                                   <Trash2 className="w-3.5 h-3.5" />
                                 )}
@@ -1419,23 +1419,23 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                             </div>
                           </div>
 
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2" title={displayTitle}>
+                          <h4 className="text-xs font-bold text-[var(--text)] line-clamp-2" title={displayTitle}>
                             {displayTitle}
                           </h4>
 
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                          <p className="text-[11px] text-[var(--muted)] line-clamp-2 leading-relaxed">
                             {res.content.replace(/[*#$`_~[\]()>{}]/g, '')}
                           </p>
                         </div>
 
-                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                          <span className="text-[10px] text-slate-400">
+                        <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                          <span className="text-[10px] text-[var(--muted)]">
                             {new Date(res.timestamp).toLocaleDateString()}
                           </span>
 
                           <button
                             onClick={handleOpenResult}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer whitespace-nowrap"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary-accent)] hover:underline cursor-pointer whitespace-nowrap"
                           >
                             <span>{actionLabel}</span>
                             <ArrowRight className="w-3.5 h-3.5" />
@@ -1449,15 +1449,15 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
                 {/* Bottom Pagination Bar when total pages > 1 */}
                 {totalResultsPages > 1 && (
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)] text-xs">
+                    <span className="text-[11px] text-[var(--muted)]">
                       Showing {(currentPage - 1) * RESULTS_PER_PAGE + 1}–{Math.min(currentPage * RESULTS_PER_PAGE, subjectResults.length)} of {subjectResults.length}
                     </span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setResultsPage(p => Math.max(1, p - 1))}
                         disabled={currentPage <= 1}
-                        className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs"
+                        className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--hover)] transition-colors shadow-xs"
                       >
                         Previous
                       </button>
@@ -1467,8 +1467,8 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                           onClick={() => setResultsPage(i + 1)}
                           className={`w-7 h-7 text-xs rounded-lg font-medium transition-colors ${
                             currentPage === i + 1
-                              ? 'bg-blue-600 text-white'
-                              : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-xs'
+                              ? 'bg-[var(--primary)] text-[var(--primary-text)]'
+                              : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] shadow-xs'
                           }`}
                         >
                           {i + 1}
@@ -1477,7 +1477,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                       <button
                         onClick={() => setResultsPage(p => Math.min(totalResultsPages, p + 1))}
                         disabled={currentPage >= totalResultsPages}
-                        className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs"
+                        className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--hover)] transition-colors shadow-xs"
                       >
                         Next
                       </button>
@@ -1504,7 +1504,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                 type="button"
                 disabled={activePageIndex === 0}
                 onClick={() => setActivePageIndex(prev => Math.max(0, prev - 1))}
-                className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 disabled:opacity-40 text-xs font-medium min-h-[44px] flex items-center gap-1 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--hover-strong)] disabled:opacity-40 text-xs font-medium min-h-[44px] flex items-center gap-1 cursor-pointer"
               >
                 Previous
               </button>
@@ -1512,20 +1512,20 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                 type="button"
                 disabled={activePageIndex === materialPages.length - 1}
                 onClick={() => setActivePageIndex(prev => Math.min(materialPages.length - 1, prev + 1))}
-                className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 disabled:opacity-40 text-xs font-medium min-h-[44px] flex items-center gap-1 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--hover-strong)] disabled:opacity-40 text-xs font-medium min-h-[44px] flex items-center gap-1 cursor-pointer"
               >
                 Next
               </button>
             </div>
 
-            <span className="text-xs text-slate-500 font-medium">
+            <span className="text-xs text-[var(--muted)] font-medium">
               Page {activePageIndex + 1} of {materialPages.length}
             </span>
           </div>
         }
       >
         {materialPages[activePageIndex]?.image ? (
-          <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black/5 dark:bg-black/30 p-2 flex items-center justify-center max-h-[350px]">
+          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--surface-raised)] p-2 flex items-center justify-center max-h-[350px]">
             <img
               src={materialPages[activePageIndex].image}
               alt={`Slide ${activePageIndex + 1}`}
@@ -1533,7 +1533,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
             />
           </div>
         ) : (
-          <div className="p-12 text-center text-xs text-slate-400">
+          <div className="p-12 text-center text-xs text-[var(--muted)]">
             This page contains pure text.
           </div>
         )}
@@ -1569,7 +1569,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
               type="button"
               onClick={() => !deletingResultId && setResultToDelete(null)}
               disabled={Boolean(deletingResultId)}
-              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap cursor-pointer"
+              className="border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors disabled:opacity-50 whitespace-nowrap cursor-pointer"
             >
               Cancel
             </button>
@@ -1577,7 +1577,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
               type="button"
               onClick={handleConfirmDeleteFromDesk}
               disabled={Boolean(deletingResultId)}
-              className="flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-500 text-white font-semibold shadow-sm transition-colors disabled:opacity-50 whitespace-nowrap cursor-pointer"
+              className="flex items-center justify-center gap-1.5 bg-[var(--danger-solid)] hover:bg-[var(--danger-solid-hover)] text-[var(--primary-text)] font-semibold shadow-sm transition-colors disabled:opacity-50 whitespace-nowrap cursor-pointer"
             >
               {deletingResultId ? (
                 <>
@@ -1594,15 +1594,15 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
           </>
         }
       >
-        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+        <p className="text-xs sm:text-sm text-[var(--muted)] leading-relaxed">
           Are you sure you want to permanently delete this study result from your desk? This action cannot be undone.
         </p>
       </Modal>
 
       {/* Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2.5 rounded-xl shadow-2xl border border-slate-700 dark:border-slate-200 text-xs font-semibold animate-slideUp">
-          <Check className="w-4 h-4 text-emerald-500" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[var(--toast-bg)] text-[var(--toast-text)] px-4 py-2.5 rounded-xl shadow-2xl border border-[var(--toast-border)] text-xs font-semibold animate-slideUp">
+          <Check className="w-4 h-4 text-[var(--success)]" />
           <span>{toastMessage}</span>
         </div>
       )}

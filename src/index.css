@@ -1,38 +1,183 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *, [data-theme='dark'], [data-theme='dark'] *));
+
 @layer base {
   :root {
     --bg-app: #f8fafc;
     --surface: #ffffff;
     --surface-raised: #f1f5f9;
+    --surface-subtle: #f8fafc;
+    --hover: #f1f5f9;
+    --hover-strong: #e2e8f0;
+    --overlay: rgba(15, 23, 42, 0.55);
+
     --border: #e2e8f0;
+    --border-subtle: #f1f5f9;
+    --border-strong: #cbd5e1;
+
     --text: #0f172a;
-    --muted: #64748b;
+    --text-secondary: #334155;
+    --muted: #475569;
+
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
-    
-    --content-summary: #10b981;
-    --content-explanation: #3b82f6;
-    --content-quiz: #f59e0b;
-    --content-flashcards: #8b5cf6;
-    --content-chat: #475569;
+    --primary-text: #ffffff;
+    --primary-accent: #2563eb;
+    --primary-soft-bg: rgba(37, 99, 235, 0.10);
+    --primary-soft-border: rgba(37, 99, 235, 0.25);
+
+    --input-bg: #f8fafc;
+    --input-border: #cbd5e1;
+
+    --toast-bg: #0f172a;
+    --toast-text: #f8fafc;
+    --toast-border: #334155;
+
+    /* Result-type & content accent tokens (AA contrast) */
+    --content-summary: #047857;
+    --accent-summary: #047857;
+    --accent-summary-bg: rgba(16, 185, 129, 0.12);
+    --accent-summary-border: rgba(16, 185, 129, 0.28);
+
+    --content-explanation: #1d4ed8;
+    --accent-explanation: #1d4ed8;
+    --accent-explanation-bg: rgba(59, 130, 246, 0.12);
+    --accent-explanation-border: rgba(59, 130, 246, 0.28);
+
+    --content-quiz: #b45309;
+    --accent-quiz: #b45309;
+    --accent-quiz-bg: rgba(245, 158, 11, 0.12);
+    --accent-quiz-border: rgba(245, 158, 11, 0.30);
+
+    --content-flashcards: #6d28d9;
+    --accent-flashcards: #6d28d9;
+    --accent-flashcards-bg: rgba(139, 92, 246, 0.12);
+    --accent-flashcards-border: rgba(139, 92, 246, 0.28);
+
+    --content-chat: #334155;
+    --accent-answer: #334155;
+    --accent-answer-bg: rgba(100, 116, 139, 0.12);
+    --accent-answer-border: rgba(100, 116, 139, 0.28);
+
+    /* Semantic status tokens */
+    --success: #047857;
+    --success-bg: rgba(16, 185, 129, 0.12);
+    --success-border: rgba(16, 185, 129, 0.28);
+
+    --warning: #b45309;
+    --warning-bg: rgba(245, 158, 11, 0.12);
+    --warning-border: rgba(245, 158, 11, 0.30);
+
+    --danger: #be123c;
+    --danger-solid: #e11d48;
+    --danger-solid-hover: #be123c;
+    --danger-bg: rgba(244, 63, 94, 0.10);
+    --danger-border: rgba(244, 63, 94, 0.28);
+
+    --info: #1d4ed8;
+    --info-bg: rgba(59, 130, 246, 0.10);
+    --info-border: rgba(59, 130, 246, 0.25);
+
+    /* Markdown, Code, Tables, Charts */
+    --code-inline-bg: #f1f5f9;
+    --code-inline-text: #be185d;
+    --code-block-bg: #f1f5f9;
+    --code-block-text: #0f172a;
+    --table-header-bg: #f1f5f9;
+    --table-row-hover: #f8fafc;
+    --chart-track: #e2e8f0;
   }
 
   .dark, [data-theme='dark'] {
     --bg-app: #020617;
     --surface: #0f172a;
     --surface-raised: #1e293b;
-    --border: #334155;
-    --text: #f8fafc;
-    --muted: #94a3b8;
-    --primary: #3b82f6;
-    --primary-hover: #2563eb;
+    --surface-subtle: #0b1222;
+    --hover: #1e293b;
+    --hover-strong: #334155;
+    --overlay: rgba(2, 6, 23, 0.78);
 
+    --border: #334155;
+    --border-subtle: #1e293b;
+    --border-strong: #475569;
+
+    --text: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --muted: #94a3b8;
+
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-text: #ffffff;
+    --primary-accent: #60a5fa;
+    --primary-soft-bg: rgba(59, 130, 246, 0.16);
+    --primary-soft-border: rgba(96, 165, 250, 0.30);
+
+    --input-bg: #1e293b;
+    --input-border: #334155;
+
+    --toast-bg: #f1f5f9;
+    --toast-text: #0f172a;
+    --toast-border: #cbd5e1;
+
+    /* Result-type & content accent tokens (AA contrast on dark surfaces) */
     --content-summary: #34d399;
+    --accent-summary: #6ee7b7;
+    --accent-summary-bg: rgba(52, 211, 153, 0.16);
+    --accent-summary-border: rgba(52, 211, 153, 0.32);
+
     --content-explanation: #60a5fa;
+    --accent-explanation: #93c5fd;
+    --accent-explanation-bg: rgba(96, 165, 250, 0.16);
+    --accent-explanation-border: rgba(96, 165, 250, 0.32);
+
     --content-quiz: #fbbf24;
+    --accent-quiz: #fcd34d;
+    --accent-quiz-bg: rgba(251, 191, 36, 0.16);
+    --accent-quiz-border: rgba(251, 191, 36, 0.32);
+
     --content-flashcards: #a78bfa;
-    --content-chat: #94a3b8;
+    --accent-flashcards: #c4b5fd;
+    --accent-flashcards-bg: rgba(167, 139, 250, 0.16);
+    --accent-flashcards-border: rgba(167, 139, 250, 0.32);
+
+    --content-chat: #cbd5e1;
+    --accent-answer: #cbd5e1;
+    --accent-answer-bg: rgba(148, 163, 184, 0.16);
+    --accent-answer-border: rgba(148, 163, 184, 0.30);
+
+    /* Semantic status tokens */
+    --success: #6ee7b7;
+    --success-bg: rgba(52, 211, 153, 0.16);
+    --success-border: rgba(52, 211, 153, 0.32);
+
+    --warning: #fcd34d;
+    --warning-bg: rgba(251, 191, 36, 0.16);
+    --warning-border: rgba(251, 191, 36, 0.32);
+
+    --danger: #fda4af;
+    --danger-solid: #e11d48;
+    --danger-solid-hover: #be123c;
+    --danger-bg: rgba(244, 63, 94, 0.16);
+    --danger-border: rgba(251, 113, 133, 0.32);
+
+    --info: #93c5fd;
+    --info-bg: rgba(59, 130, 246, 0.16);
+    --info-border: rgba(96, 165, 250, 0.32);
+
+    /* Markdown, Code, Tables, Charts */
+    --code-inline-bg: #1e293b;
+    --code-inline-text: #f472b6;
+    --code-block-bg: #020617;
+    --code-block-text: #f1f5f9;
+    --table-header-bg: #1e293b;
+    --table-row-hover: rgba(30, 41, 59, 0.5);
+    --chart-track: #1e293b;
+  }
+
+  html {
+    background-color: var(--bg-app);
+    color: var(--text);
   }
 
   body {
@@ -45,6 +190,11 @@
 
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
+  }
+
+  select option {
+    background-color: var(--surface);
+    color: var(--text);
   }
 }
 
@@ -61,8 +211,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* KaTeX theme inheritance */
 .katex {
   color: inherit !important;
+}
+
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
 }
 
 @keyframes fadeIn {
@@ -74,3 +231,17 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   animation: fadeIn 0.2s ease-out forwards;
 }
 
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.2s ease-out forwards;
+}

@@ -191,8 +191,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({
         toastEl.id = 'studybridge-toast-container';
         toastEl.className = `fixed bottom-6 right-6 z-[9999] px-4 py-2.5 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2 transition-all duration-300 ${
           isError 
-            ? 'bg-rose-600 text-white shadow-rose-600/30' 
-            : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-slate-900/30'
+            ? 'bg-[var(--danger-solid)] text-[var(--primary-text)]' 
+            : 'bg-[var(--toast-bg)] text-[var(--toast-text)] border border-[var(--toast-border)]'
         }`;
         toastEl.textContent = text;
         document.body.appendChild(toastEl);
@@ -518,7 +518,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               type="button"
               disabled={isDeleting}
               onClick={() => setShowDeleteDialog(false)}
-              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors whitespace-nowrap cursor-pointer"
+              className="border border-[var(--border)] bg-[var(--surface)] font-semibold text-[var(--text-secondary)] hover:bg-[var(--hover)] disabled:opacity-50 transition-colors whitespace-nowrap cursor-pointer"
             >
               Cancel
             </button>
@@ -526,7 +526,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               type="button"
               disabled={isDeleting}
               onClick={handleConfirmDelete}
-              className="flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-500 disabled:opacity-60 text-white font-semibold shadow-sm transition-colors whitespace-nowrap cursor-pointer"
+              className="flex items-center justify-center gap-1.5 bg-[var(--danger-solid)] hover:bg-[var(--danger-solid-hover)] disabled:opacity-60 text-[var(--primary-text)] font-semibold shadow-sm transition-colors whitespace-nowrap cursor-pointer"
             >
               {isDeleting ? (
                 <>
@@ -543,7 +543,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
           </>
         }
       >
-        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+        <p className="text-xs sm:text-sm text-[var(--muted)] leading-relaxed">
           Are you sure you want to delete this result? This action is permanent and cannot be undone.
         </p>
       </Modal>
@@ -553,8 +553,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({
   if (loading) {
     return (
       <div className="max-w-[960px] mx-auto px-4 py-16 flex flex-col items-center justify-center space-y-3">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <p className="text-xs text-slate-500">Loading document...</p>
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)]" />
+        <p className="text-xs text-[var(--muted)]">Loading document...</p>
       </div>
     );
   }
@@ -562,12 +562,12 @@ export const ResultPage: React.FC<ResultPageProps> = ({
   if (!result) {
     return (
       <div className="max-w-[960px] mx-auto px-4 py-16 text-center space-y-4">
-        <h3 className="text-base font-bold text-slate-800 dark:text-white">Document Not Found</h3>
-        <p className="text-xs text-slate-500">This AI result may have been removed or does not exist.</p>
+        <h3 className="text-base font-bold text-[var(--text)]">Document Not Found</h3>
+        <p className="text-xs text-[var(--muted)]">This AI result may have been removed or does not exist.</p>
         <div className="flex items-center justify-center gap-3">
           <button
             onClick={() => navigate('/study')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-medium whitespace-nowrap"
+            className="px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-xl text-xs font-medium whitespace-nowrap"
             style={{ whiteSpace: 'nowrap' }}
           >
             Return to Study Desk
@@ -575,7 +575,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
           {id && (
             <button
               onClick={() => setShowDeleteDialog(true)}
-              className="px-4 py-2 border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 text-rose-600 rounded-xl text-xs font-medium whitespace-nowrap"
+              className="px-4 py-2 border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] rounded-xl text-xs font-medium whitespace-nowrap"
               style={{ whiteSpace: 'nowrap' }}
             >
               Delete Record
@@ -609,14 +609,21 @@ export const ResultPage: React.FC<ResultPageProps> = ({
     ? `Cloud ${timingParts ? `(${timingParts})` : ''}`
     : (timingParts ? `AI (${timingParts})` : 'AI');
 
+  const isFlashcardResult = result.type === 'flashcards' || (result.type as string) === 'flashcard';
+  const isQuizResult = result.type === 'quiz';
+  const isInteractiveStudyView = Boolean(
+    (isFlashcardResult && generatedFlashcards?.cards?.length) ||
+    (isQuizResult && generatedQuiz?.questions?.length)
+  );
+
   return (
     <div className="max-w-[960px] mx-auto px-4 sm:px-6 py-8 space-y-6 animate-fadeIn">
       {/* Toast Alert Banner if present */}
       {toastMessage && (
         <div className={`p-3 rounded-2xl text-xs font-medium flex items-center justify-between shadow-sm animate-fadeIn ${
           toastMessage.isError 
-            ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50' 
-            : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/50'
+            ? 'bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger-border)]' 
+            : 'bg-[var(--success-bg)] text-[var(--success)] border border-[var(--success-border)]'
         }`}>
           <span>{toastMessage.text}</span>
           <button 
@@ -629,15 +636,17 @@ export const ResultPage: React.FC<ResultPageProps> = ({
         </div>
       )}
 
+      {!isInteractiveStudyView && (
+        <>
       {/* Top Action Bar: Exactly one clean row, no wrapping from 320px to 1440px */}
-      <div className="flex items-center justify-between w-full gap-2 border-b border-slate-200 dark:border-slate-800 pb-4 flex-nowrap">
+      <div className="flex items-center justify-between w-full gap-2 border-b border-[var(--border)] pb-4 flex-nowrap">
         {/* Pinned Left: Back icon button with aria-label & tooltip (no text label) */}
         <button
           type="button"
           onClick={() => navigate('/study')}
           aria-label="Back to Study Desk"
           title="Back to Study Desk"
-          className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          className="p-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--hover)] transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
           style={{ whiteSpace: 'nowrap' }}
         >
           <ArrowLeft className="w-4 h-4" />
@@ -653,10 +662,10 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               disabled={!hasContent}
               aria-label={copied ? 'Copied' : 'Copy'}
               title={copied ? 'Copied' : 'Copy'}
-              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="p-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
               style={{ whiteSpace: 'nowrap' }}
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-[var(--success)]" /> : <Copy className="w-4 h-4" />}
             </button>
           ) : (
             <button
@@ -665,10 +674,10 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               disabled={!hasContent}
               aria-label="Copy"
               title="Copy"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
               style={{ whiteSpace: 'nowrap' }}
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-[var(--success)]" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied!' : 'Copy'}</span>
             </button>
           )}
@@ -681,10 +690,10 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               disabled={isRegenerating}
               aria-label={isRegenerating ? 'Regenerating...' : 'Regenerate'}
               title={isRegenerating ? 'Regenerating...' : 'Regenerate'}
-              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="p-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
               style={{ whiteSpace: 'nowrap' }}
             >
-              <RefreshCw className={`w-4 h-4 ${isRegenerating ? 'animate-spin text-blue-500' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isRegenerating ? 'animate-spin text-[var(--primary-accent)]' : ''}`} />
             </button>
           ) : (
             <button
@@ -693,10 +702,10 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               disabled={isRegenerating}
               aria-label="Regenerate"
               title="Regenerate"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
               style={{ whiteSpace: 'nowrap' }}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin text-blue-500' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin text-[var(--primary-accent)]' : ''}`} />
               <span>{isRegenerating ? 'Regenerating...' : 'Regenerate'}</span>
             </button>
           )}
@@ -711,10 +720,10 @@ export const ResultPage: React.FC<ResultPageProps> = ({
                 disabled={!hasContent}
                 aria-label="Save as Note"
                 title="Save as Note"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
                 style={{ whiteSpace: 'nowrap' }}
               >
-                {savedAsNote ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <FileText className="w-3.5 h-3.5 text-blue-500" />}
+                {savedAsNote ? <Check className="w-3.5 h-3.5 text-[var(--success)]" /> : <FileText className="w-3.5 h-3.5 text-[var(--primary-accent)]" />}
                 <span>{savedAsNote ? 'Saved to Materials!' : 'Save as Note'}</span>
               </button>
 
@@ -726,7 +735,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
                   disabled={isGeneratingTool || !hasContent}
                   aria-label="Make quiz from this"
                   title="Make quiz from this"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-medium shadow-sm transition-colors shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-40 text-[var(--primary-text)] text-xs font-medium shadow-sm transition-colors shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
                   style={{ whiteSpace: 'nowrap' }}
                 >
                   <HelpCircle className="w-3.5 h-3.5" />
@@ -742,7 +751,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
                   disabled={isGeneratingTool || !hasContent}
                   aria-label="Make flashcards from this"
                   title="Make flashcards from this"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs font-medium shadow-sm transition-colors shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent-flashcards-bg)] hover:bg-[var(--hover)] border border-[var(--accent-flashcards-border)] disabled:opacity-40 text-[var(--accent-flashcards)] text-xs font-semibold shadow-sm transition-colors shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--accent-flashcards)]/30"
                   style={{ whiteSpace: 'nowrap' }}
                 >
                   <Layers className="w-3.5 h-3.5" />
@@ -760,7 +769,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               disabled={isDeleting}
               aria-label="Delete result"
               title="Delete result"
-              className="p-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+              className="p-2 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-90 disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--danger)]/30"
               style={{ whiteSpace: 'nowrap' }}
             >
               <Trash2 className="w-4 h-4" />
@@ -772,7 +781,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               disabled={isDeleting}
               aria-label="Delete result"
               title="Delete result"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] text-xs font-medium text-[var(--danger)] hover:opacity-90 disabled:opacity-40 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--danger)]/30"
               style={{ whiteSpace: 'nowrap' }}
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -788,14 +797,14 @@ export const ResultPage: React.FC<ResultPageProps> = ({
                 onClick={() => setShowMoreMenu(prev => !prev)}
                 aria-label="More actions"
                 title="More actions"
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="p-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors shadow-sm shrink-0 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
                 style={{ whiteSpace: 'nowrap' }}
               >
                 <MoreVertical className="w-4 h-4" />
               </button>
 
               {showMoreMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-1.5 z-40 animate-fadeIn">
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-xl py-1.5 z-40 animate-fadeIn">
                   <button
                     type="button"
                     disabled={!hasContent}
@@ -803,10 +812,10 @@ export const ResultPage: React.FC<ResultPageProps> = ({
                       setShowMoreMenu(false);
                       handleSaveAsNote();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors text-left whitespace-nowrap"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] disabled:opacity-40 transition-colors text-left whitespace-nowrap"
                     style={{ whiteSpace: 'nowrap' }}
                   >
-                    {savedAsNote ? <Check className="w-4 h-4 text-emerald-500 shrink-0" /> : <FileText className="w-4 h-4 text-blue-500 shrink-0" />}
+                    {savedAsNote ? <Check className="w-4 h-4 text-[var(--success)] shrink-0" /> : <FileText className="w-4 h-4 text-[var(--primary-accent)] shrink-0" />}
                     <span>{savedAsNote ? 'Saved to Materials!' : 'Save as Note'}</span>
                   </button>
 
@@ -818,10 +827,10 @@ export const ResultPage: React.FC<ResultPageProps> = ({
                         setShowMoreMenu(false);
                         handleMakeQuiz();
                       }}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors text-left whitespace-nowrap"
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] disabled:opacity-40 transition-colors text-left whitespace-nowrap"
                       style={{ whiteSpace: 'nowrap' }}
                     >
-                      <HelpCircle className="w-4 h-4 text-blue-500 shrink-0" />
+                      <HelpCircle className="w-4 h-4 text-[var(--primary-accent)] shrink-0" />
                       <span>Make quiz from this</span>
                     </button>
                   )}
@@ -834,10 +843,10 @@ export const ResultPage: React.FC<ResultPageProps> = ({
                         setShowMoreMenu(false);
                         handleMakeFlashcards();
                       }}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors text-left whitespace-nowrap"
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--hover)] disabled:opacity-40 transition-colors text-left whitespace-nowrap"
                       style={{ whiteSpace: 'nowrap' }}
                     >
-                      <Layers className="w-4 h-4 text-purple-500 shrink-0" />
+                      <Layers className="w-4 h-4 text-[var(--accent-flashcards)] shrink-0" />
                       <span>Make flashcards from this</span>
                     </button>
                   )}
@@ -849,24 +858,24 @@ export const ResultPage: React.FC<ResultPageProps> = ({
       </div>
 
       {/* Document Header & Metadata Banner */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--surface-raised)] text-[var(--text-secondary)] border border-[var(--border)]">
               {subject?.name || 'General Study'}
             </span>
 
             {/* Type badge: uses result's saved type; if missing, displays "Result", NEVER "Concept Explanation" */}
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider border ${
               (result.type === 'answer' || (result.type as string) === 'custom')
-                ? 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20'
-                : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                ? 'bg-[var(--accent-answer-bg)] text-[var(--accent-answer)] border-[var(--accent-answer-border)]'
+                : 'bg-[var(--primary-soft-bg)] text-[var(--primary-accent)] border-[var(--primary-soft-border)]'
             }`}>
               {getTypeLabel(result.type)}
             </span>
 
             {result.level && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-[var(--accent-flashcards-bg)] text-[var(--accent-flashcards)] border border-[var(--accent-flashcards-border)]">
                 {result.level}
               </span>
             )}
@@ -877,8 +886,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({
             {/* Sync status */}
             <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${
               result.hasPendingWrites
-                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
-                : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
+                ? 'bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning-border)]'
+                : 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success-border)]'
             }`}>
               <Cloud className="w-3 h-3" />
               {result.hasPendingWrites ? 'Waiting to sync' : 'Saved to your account'}
@@ -892,11 +901,11 @@ export const ResultPage: React.FC<ResultPageProps> = ({
           </div>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text)]">
           {result.title || 'Untitled Result'}
         </h1>
 
-        <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 flex-wrap">
+        <div className="flex items-center gap-4 text-xs text-[var(--muted)] pt-1 border-t border-[var(--border-subtle)] flex-wrap">
           <span className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
             {result.timestamp 
@@ -904,19 +913,21 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               : 'Saved Result'}
           </span>
           {latencySec && (
-            <span className="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
-              <Clock className="w-3.5 h-3.5 text-blue-500" />
+            <span className="flex items-center gap-1 font-medium text-[var(--text-secondary)]">
+              <Clock className="w-3.5 h-3.5 text-[var(--primary-accent)]" />
               {latencySec}
             </span>
           )}
           {result.routingReason && (
             <span className="flex items-center gap-1 truncate">
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <Zap className="w-3.5 h-3.5 text-[var(--warning)]" />
               {result.routingReason}
             </span>
           )}
         </div>
       </div>
+        </>
+      )}
 
       {/* Main Content: Interactive Flashcards, Quiz Arena, or Document View */}
       {(result.type === 'flashcards' || (result.type as string) === 'flashcard') && generatedFlashcards?.cards?.length ? (
@@ -936,13 +947,13 @@ export const ResultPage: React.FC<ResultPageProps> = ({
           />
         </div>
       ) : (result.type === 'flashcards' || (result.type as string) === 'flashcard') ? (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[320px]">
-          <div className="w-14 h-14 rounded-2xl bg-purple-500/10 dark:bg-purple-500/20 border border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 sm:p-12 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[320px]">
+          <div className="w-14 h-14 rounded-2xl bg-[var(--accent-flashcards-bg)] border border-[var(--accent-flashcards-border)] text-[var(--accent-flashcards)] flex items-center justify-center">
             <Layers className="w-7 h-7" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">Flashcard Deck</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            <h3 className="text-base font-bold text-[var(--text)]">Flashcard Deck</h3>
+            <p className="text-xs text-[var(--muted)] max-w-sm mx-auto">
               Ready to study? Click below to generate or load the interactive flashcards.
             </p>
           </div>
@@ -950,20 +961,20 @@ export const ResultPage: React.FC<ResultPageProps> = ({
             type="button"
             onClick={handleRegenerate}
             disabled={isRegenerating}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent-flashcards-bg)] hover:bg-[var(--hover)] border border-[var(--accent-flashcards-border)] disabled:opacity-50 text-[var(--accent-flashcards)] text-xs font-bold shadow-sm transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin' : ''}`} />
             <span>{isRegenerating ? 'Generating cards...' : 'Load / Generate Flashcards'}</span>
           </button>
         </div>
       ) : (result.type === 'quiz') ? (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[320px]">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 sm:p-12 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[320px]">
+          <div className="w-14 h-14 rounded-2xl bg-[var(--accent-quiz-bg)] border border-[var(--accent-quiz-border)] text-[var(--accent-quiz)] flex items-center justify-center">
             <HelpCircle className="w-7 h-7" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">Quiz Arena</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            <h3 className="text-base font-bold text-[var(--text)]">Quiz Arena</h3>
+            <p className="text-xs text-[var(--muted)] max-w-sm mx-auto">
               Ready for practice? Click below to generate or load the interactive questions.
             </p>
           </div>
@@ -971,19 +982,19 @@ export const ResultPage: React.FC<ResultPageProps> = ({
             type="button"
             onClick={handleRegenerate}
             disabled={isRegenerating}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent-quiz-bg)] hover:bg-[var(--hover)] border border-[var(--accent-quiz-border)] disabled:opacity-50 text-[var(--accent-quiz)] text-xs font-bold shadow-sm transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin' : ''}`} />
             <span>{isRegenerating ? 'Generating questions...' : 'Load / Generate Quiz'}</span>
           </button>
         </div>
       ) : isEmptyContent ? (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[300px]">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 sm:p-12 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[300px]">
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <p className="text-sm font-semibold text-[var(--text-secondary)]">
               This result is empty
             </p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-[var(--muted)]">
               No content was generated or saved for this record.
             </p>
           </div>
@@ -992,7 +1003,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               type="button"
               onClick={handleRegenerate}
               disabled={isRegenerating}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold shadow-sm transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-50 text-[var(--primary-text)] text-xs font-semibold shadow-sm transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
               style={{ whiteSpace: 'nowrap' }}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin' : ''}`} />
@@ -1002,7 +1013,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               type="button"
               onClick={() => setShowDeleteDialog(true)}
               disabled={isDeleting}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 disabled:opacity-50 text-xs font-semibold shadow-sm transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-90 disabled:opacity-50 text-xs font-semibold shadow-sm transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--danger)]/30"
               style={{ whiteSpace: 'nowrap' }}
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -1011,12 +1022,12 @@ export const ResultPage: React.FC<ResultPageProps> = ({
           </div>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-sm min-h-[500px] space-y-6">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 sm:p-10 shadow-sm min-h-[500px] space-y-6">
           {result.prompt && 
            result.prompt.trim() && 
            !result.prompt.includes('=== Source:') && 
            result.prompt.length <= 300 && (
-            <blockquote className="border-l-4 border-slate-400 dark:border-slate-500 pl-4 py-2 italic text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 rounded-r-2xl">
+            <blockquote className="border-l-4 border-[var(--border-strong)] pl-4 py-2 italic text-sm text-[var(--text-secondary)] bg-[var(--surface-raised)] rounded-r-2xl">
               "{result.prompt}"
             </blockquote>
           )}
@@ -1028,8 +1039,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({
       {result.followUps && result.followUps.length > 0 && (
         <div className="space-y-4 pt-2">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+            <Sparkles className="w-4 h-4 text-[var(--accent-flashcards)]" />
+            <h3 className="text-sm font-bold text-[var(--text)]">
               Questions & Discussions on this {(result.type === 'flashcards' || (result.type as string) === 'flashcard') ? 'Deck' : result.type === 'quiz' ? 'Quiz' : 'Result'} ({result.followUps.length})
             </h3>
           </div>
@@ -1038,26 +1049,26 @@ export const ResultPage: React.FC<ResultPageProps> = ({
             {result.followUps.map((fu, idx) => (
               <div 
                 key={fu.id || idx}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 animate-fadeIn"
+                className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 animate-fadeIn"
               >
                 {/* Question */}
                 <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-lg bg-[var(--info-bg)] text-[var(--info)] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     Q
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                    <p className="text-sm font-bold text-[var(--text)]">
                       {fu.question}
                     </p>
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">
+                    <span className="text-[10px] text-[var(--muted)] mt-0.5 block">
                       {fu.timestamp ? new Date(fu.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                     </span>
                   </div>
                 </div>
 
                 {/* Answer */}
-                <div className="flex items-start gap-3 border-t border-slate-100 dark:border-slate-800/80 pt-4">
-                  <div className="w-7 h-7 rounded-lg bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                <div className="flex items-start gap-3 border-t border-[var(--border-subtle)] pt-4">
+                  <div className="w-7 h-7 rounded-lg bg-[var(--accent-flashcards-bg)] text-[var(--accent-flashcards)] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     A
                   </div>
                   <div className="flex-1 overflow-x-auto min-w-0">
@@ -1070,12 +1081,12 @@ export const ResultPage: React.FC<ResultPageProps> = ({
                           setCopiedFollowUpId(fu.id || String(idx));
                           setTimeout(() => setCopiedFollowUpId(null), 2000);
                         }}
-                        className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-[11px] text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
                       >
                         {copiedFollowUpId === (fu.id || String(idx)) ? (
                           <>
-                            <Check className="w-3.5 h-3.5 text-emerald-500" />
-                            <span className="text-emerald-500 font-medium">Copied</span>
+                            <Check className="w-3.5 h-3.5 text-[var(--success)]" />
+                            <span className="text-[var(--success)] font-medium">Copied</span>
                           </>
                         ) : (
                           <>
@@ -1094,17 +1105,17 @@ export const ResultPage: React.FC<ResultPageProps> = ({
       )}
 
       {/* Ask a follow-up input (saves directly into this result) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-3">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-blue-500" />
+          <span className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-[var(--primary-accent)]" />
             {(result.type === 'flashcards' || (result.type as string) === 'flashcard')
               ? 'Ask a question about these flashcards'
               : result.type === 'quiz'
               ? 'Ask a question about this quiz'
               : 'Ask a follow-up question'}
           </span>
-          <span className={`text-[10px] ${followUpQuestion.length > 500 ? 'text-rose-500' : 'text-slate-400'}`}>
+          <span className={`text-[10px] ${followUpQuestion.length > 500 ? 'text-[var(--danger)]' : 'text-[var(--muted)]'}`}>
             {followUpQuestion.length}/500
           </span>
         </div>
@@ -1129,13 +1140,13 @@ export const ResultPage: React.FC<ResultPageProps> = ({
                 : "Ask a follow-up question based on this result..."
             }
             disabled={isSubmittingFollowUp}
-            className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+            className="flex-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-[var(--primary)]"
           />
           <button
             type="button"
             onClick={handleAskFollowUp}
             disabled={isSubmittingFollowUp || !followUpQuestion.trim()}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-all whitespace-nowrap cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-50 text-[var(--primary-text)] text-xs font-bold shadow-sm transition-all whitespace-nowrap cursor-pointer"
           >
             {isSubmittingFollowUp ? (
               <>
@@ -1150,7 +1161,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
             )}
           </button>
         </div>
-        <p className="text-[11px] text-slate-400 dark:text-slate-500">
+        <p className="text-[11px] text-[var(--muted)]">
           Answers stay saved here on this {(result.type === 'flashcards' || (result.type as string) === 'flashcard') ? 'flashcard deck' : result.type === 'quiz' ? 'quiz' : 'result'} and won't clutter your main Study Desk.
         </p>
       </div>

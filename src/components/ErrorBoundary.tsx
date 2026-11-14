@@ -31,21 +31,21 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-6 select-text font-sans">
-          <div className="max-w-md w-full bg-slate-800/90 border border-slate-700 rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto">
+        <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text)] flex items-center justify-center p-6 select-text font-sans">
+          <div className="max-w-md w-full bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--danger-bg)] text-[var(--danger)] flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-lg font-bold text-white">Something went wrong</h2>
-              <p className="text-xs text-slate-400">
+              <h2 className="text-lg font-bold text-[var(--text)]">Something went wrong</h2>
+              <p className="text-xs text-[var(--muted)]">
                 {this.state.error?.message || 'An unexpected rendering issue occurred.'}
               </p>
             </div>
             <button
               type="button"
               onClick={this.handleReload}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-sm font-semibold transition-colors cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Reload StudyBridge</span>

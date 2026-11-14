@@ -41,9 +41,9 @@ export function getRouteLabel(route: InferenceRoute, meta?: {
     name,
     badgeText: isDevice ? `On-Device ${timing ? `(${timing})` : ''}` : `Cloud ${timing ? `(${timing})` : ''}`,
     subText: meta?.routingReason || (isDevice ? 'Local on-device inference' : 'Firebase AI Logic cloud model'),
-    colorClass: isDevice ? 'text-emerald-700 dark:text-emerald-300' : 'text-indigo-700 dark:text-indigo-300',
-    bgClass: isDevice ? 'bg-emerald-500/10' : 'bg-indigo-500/10',
-    borderClass: isDevice ? 'border-emerald-500/20' : 'border-indigo-500/20',
+    colorClass: isDevice ? 'text-[var(--success)]' : 'text-[var(--info)]',
+    bgClass: isDevice ? 'bg-[var(--success-bg)]' : 'bg-[var(--info-bg)]',
+    borderClass: isDevice ? 'border-[var(--success-border)]' : 'border-[var(--info-border)]',
     isDevice
   };
 }

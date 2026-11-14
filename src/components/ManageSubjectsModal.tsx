@@ -133,7 +133,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
         title="Manage Subjects"
         subtitle="Organize your subjects, privacy settings, and study materials"
         icon={
-          <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[var(--info-bg)] text-[var(--info)] flex items-center justify-center shrink-0">
             <FolderPlus className="w-5 h-5" />
           </div>
         }
@@ -141,8 +141,8 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
         bodyClassName="space-y-6"
       >
         {/* Create New Subject Card */}
-        <form onSubmit={handleCreate} className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-3.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
+        <form onSubmit={handleCreate} className="bg-[var(--surface-raised)] p-4 rounded-2xl border border-[var(--border)] space-y-3.5">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] block">
             Create New Subject
           </span>
 
@@ -153,12 +153,12 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="e.g. Cognitive Psychology, Organic Chemistry"
-              className="flex-1 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 min-h-[44px]"
+              className="flex-1 min-w-0 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-[var(--text)] focus:outline-none focus:border-[var(--primary)] min-h-[44px]"
             />
             <button
               type="submit"
               disabled={isSubmitting || !newName.trim()}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-sm font-medium shadow shrink-0 flex items-center justify-center gap-1.5 min-h-[44px] cursor-pointer"
+              className="px-4 py-2.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-50 text-[var(--primary-text)] rounded-xl text-sm font-medium shadow shrink-0 flex items-center justify-center gap-1.5 min-h-[44px] cursor-pointer"
             >
               <FolderPlus className="w-4 h-4" />
               <span>Add Subject</span>
@@ -168,8 +168,8 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
             {/* Color Presets */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <Palette className="w-4 h-4 text-slate-400 mr-0.5 shrink-0" />
-              <span className="text-xs text-slate-500 mr-1 shrink-0">Color:</span>
+              <Palette className="w-4 h-4 text-[var(--muted)] mr-0.5 shrink-0" />
+              <span className="text-xs text-[var(--muted)] mr-1 shrink-0">Color:</span>
               <div className="flex items-center gap-2 flex-wrap">
                 {COLOR_PRESETS.map((preset) => (
                   <button
@@ -177,7 +177,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                     type="button"
                     onClick={() => setNewColor(preset.value)}
                     className={`w-7 h-7 rounded-full ${preset.dot} transition-transform min-h-[28px] min-w-[28px] ${
-                      newColor === preset.value ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'opacity-80 hover:opacity-100'
+                      newColor === preset.value ? 'ring-2 ring-offset-2 ring-[var(--primary)] scale-110' : 'opacity-80 hover:opacity-100'
                     }`}
                     title={preset.name}
                     aria-label={`Select ${preset.name} color`}
@@ -196,10 +196,10 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                 disabled={!isDeviceAiAvailable}
                 checked={newIsPrivate}
                 onChange={(e) => setNewIsPrivate(e.target.checked)}
-                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 disabled:cursor-not-allowed"
+                className="rounded accent-[var(--primary)] w-4 h-4 disabled:cursor-not-allowed"
               />
-              <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-medium text-xs">
-                <Lock className="w-3.5 h-3.5 text-amber-500" />
+              <span className="flex items-center gap-1 text-[var(--text-secondary)] font-medium text-xs">
+                <Lock className="w-3.5 h-3.5 text-[var(--warning)]" />
                 Private (On-Device Only) {!isDeviceAiAvailable && '(Unavailable)'}
               </span>
             </label>
@@ -208,36 +208,36 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
 
         {/* Existing Subjects List */}
         <div className="space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 block">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] block">
             Existing Subjects ({subjects.length})
           </span>
 
           {subjects.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-400">
+            <div className="p-6 text-center text-xs text-[var(--muted)]">
               No subjects yet. Create one above to get started.
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-900">
+            <div className="divide-y divide-[var(--border-subtle)] border border-[var(--border)] rounded-2xl overflow-hidden bg-[var(--surface)]">
               {subjects.map((sub) => {
                 const matCount = materials.filter(m => m.subjectId === sub.id).length;
                 const isEditing = editingId === sub.id;
 
                 if (isEditing) {
                   return (
-                    <div key={sub.id} className="p-4 bg-blue-50/50 dark:bg-blue-950/20 space-y-3.5">
+                    <div key={sub.id} className="p-4 bg-[var(--primary-soft-bg)] space-y-3.5">
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <input
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="flex-1 min-w-0 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-base sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 min-h-[44px]"
+                          className="flex-1 min-w-0 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2 text-base sm:text-sm text-[var(--text)] focus:outline-none focus:border-[var(--primary)] min-h-[44px]"
                           autoFocus
                         />
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => handleSaveEdit(sub.id)}
-                            className="flex-1 sm:flex-none p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-500 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+                            className="flex-1 sm:flex-none p-2.5 bg-[var(--primary)] text-[var(--primary-text)] rounded-xl hover:bg-[var(--primary-hover)] min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
                             title="Save changes"
                             aria-label="Save changes"
                           >
@@ -246,7 +246,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                           <button
                             type="button"
                             onClick={() => setEditingId(null)}
-                            className="flex-1 sm:flex-none p-2.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+                            className="flex-1 sm:flex-none p-2.5 text-[var(--muted)] hover:text-[var(--text)] rounded-xl hover:bg-[var(--hover)] min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
                             title="Cancel"
                             aria-label="Cancel editing"
                           >
@@ -264,7 +264,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                               type="button"
                               onClick={() => setEditColor(preset.value)}
                               className={`w-6 h-6 rounded-full ${preset.dot} min-h-[24px] min-w-[24px] ${
-                                editColor === preset.value ? 'ring-2 ring-blue-500 scale-110' : 'opacity-70'
+                                editColor === preset.value ? 'ring-2 ring-[var(--primary)] scale-110' : 'opacity-70'
                               }`}
                               aria-label={`Select ${preset.name} color`}
                             />
@@ -281,10 +281,10 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                             disabled={!isDeviceAiAvailable}
                             checked={editIsPrivate}
                             onChange={(e) => setEditIsPrivate(e.target.checked)}
-                            className="rounded text-blue-600 w-4 h-4 disabled:cursor-not-allowed"
+                            className="rounded accent-[var(--primary)] w-4 h-4 disabled:cursor-not-allowed"
                           />
-                          <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
-                            <Lock className="w-3.5 h-3.5 text-amber-500" />
+                          <span className="flex items-center gap-1 text-[var(--text-secondary)]">
+                            <Lock className="w-3.5 h-3.5 text-[var(--warning)]" />
                             Private {!isDeviceAiAvailable && '(Unavailable)'}
                           </span>
                         </label>
@@ -294,21 +294,21 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                 }
 
                 return (
-                  <div key={sub.id} className="p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                  <div key={sub.id} className="p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-[var(--hover)] transition-colors">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className={`w-3.5 h-3.5 rounded-full bg-gradient-to-tr ${sub.color || 'from-blue-600 to-indigo-600'} shrink-0`} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white truncate">
+                          <span className="text-xs sm:text-sm font-semibold text-[var(--text)] truncate">
                             {sub.name}
                           </span>
                           {sub.isPrivate && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded-full shrink-0">
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning-border)] px-1.5 py-0.5 rounded-full shrink-0">
                               <Lock className="w-2.5 h-2.5" /> Private
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-slate-500 dark:text-slate-400 block truncate">
+                        <span className="text-xs text-[var(--muted)] block truncate">
                           {matCount} material{matCount === 1 ? '' : 's'}
                         </span>
                       </div>
@@ -318,7 +318,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleStartEdit(sub)}
-                        className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+                        className="p-2 text-[var(--muted)] hover:text-[var(--text)] rounded-xl hover:bg-[var(--hover-strong)] min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
                         title="Rename / Edit"
                         aria-label={`Edit ${sub.name}`}
                       >
@@ -332,7 +332,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                           const nextOther = subjects.find(s => s.id !== sub.id);
                           setTargetSubjectId(nextOther ? nextOther.id : '');
                         }}
-                        className="p-2 text-rose-500 hover:text-rose-700 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+                        className="p-2 text-[var(--danger)] hover:bg-[var(--danger-bg)] rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
                         title="Delete subject"
                         aria-label={`Delete ${sub.name}`}
                       >
@@ -355,7 +355,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
           title={`Delete Subject: "${subjectToDelete.name}"?`}
           subtitle={`This subject contains ${materialsInSubject} study material${materialsInSubject === 1 ? '' : 's'}. Choose what should happen to them:`}
           icon={
-            <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[var(--danger-bg)] text-[var(--danger)] flex items-center justify-center shrink-0">
               <AlertTriangle className="w-5 h-5" />
             </div>
           }
@@ -371,7 +371,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                 type="button"
                 onClick={() => setSubjectToDelete(null)}
                 disabled={isDeleting}
-                className="border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer"
+                className="border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -379,7 +379,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isDeleting || (deleteAction === 'move' && !targetSubjectId)}
-                className="bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-semibold shadow transition-colors cursor-pointer"
+                className="bg-[var(--danger-solid)] hover:bg-[var(--danger-solid-hover)] disabled:opacity-50 text-[var(--primary-text)] font-semibold shadow transition-colors cursor-pointer"
               >
                 {isDeleting ? 'Deleting...' : 'Confirm Delete'}
               </button>
@@ -389,15 +389,15 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
           <div className="space-y-3 pt-1 text-xs sm:text-sm">
             <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
               deleteAction === 'delete-materials'
-                ? 'border-rose-500 bg-rose-500/5 text-rose-900 dark:text-rose-200'
-                : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                ? 'border-[var(--danger)] bg-[var(--danger-bg)] text-[var(--text)]'
+                : 'border-[var(--border)] text-[var(--text-secondary)]'
             }`}>
               <input
                 type="radio"
                 name="deleteChoice"
                 checked={deleteAction === 'delete-materials'}
                 onChange={() => setDeleteAction('delete-materials')}
-                className="mt-1 text-rose-600 w-4 h-4"
+                className="mt-1 accent-[var(--danger-solid)] w-4 h-4"
               />
               <div>
                 <span className="font-semibold block text-sm">Delete its materials</span>
@@ -408,15 +408,15 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
             {otherSubjects.length > 0 && (
               <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
                 deleteAction === 'move'
-                  ? 'border-blue-500 bg-blue-500/5 text-blue-900 dark:text-blue-200'
-                  : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                  ? 'border-[var(--primary)] bg-[var(--primary-soft-bg)] text-[var(--text)]'
+                  : 'border-[var(--border)] text-[var(--text-secondary)]'
               }`}>
                 <input
                   type="radio"
                   name="deleteChoice"
                   checked={deleteAction === 'move'}
                   onChange={() => setDeleteAction('move')}
-                  className="mt-1 text-blue-600 w-4 h-4"
+                  className="mt-1 accent-[var(--primary)] w-4 h-4"
                 />
                 <div className="w-full min-w-0">
                   <span className="font-semibold block text-sm">Move them to another subject</span>
@@ -426,7 +426,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                     <select
                       value={targetSubjectId}
                       onChange={(e) => setTargetSubjectId(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-base sm:text-sm text-slate-900 dark:text-white font-medium min-h-[44px]"
+                      className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl p-2.5 text-base sm:text-sm text-[var(--text)] font-medium min-h-[44px]"
                     >
                       {otherSubjects.map(os => (
                         <option key={os.id} value={os.id}>

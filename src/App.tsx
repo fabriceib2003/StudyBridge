@@ -39,12 +39,15 @@ import { TermsPage } from './components/TermsPage';
 import { HomePage } from './components/HomePage';
 import { FAIL_OPEN, RESTRICTION_CODE, REGION_RESTRICTION_ENABLED } from './config/regionRestriction';
 import { Loader2 } from 'lucide-react';
+import { useTheme } from './contexts/ThemeContext';
 import 'katex/dist/katex.min.css';
 
 
 export default function App() {
+  const { theme, isDark, setTheme, syncThemeFromPreferences, registerFirestoreSaver } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const prefsLoadedForUidRef = React.useRef<string | null>(null);
 
   // App state
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -58,9 +61,6 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
   // Preferences state
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
-    return (localStorage.getItem('studybridge_theme') as any) || 'light';
-  });
   const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md');
   const [answerLength, setAnswerLength] = useState<'short' | 'detailed'>('detailed');
   const [studyLanguage, setStudyLanguage] = useState<string>('English');
@@ -125,58 +125,17 @@ export default function App() {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Theme application to root document
+  // Register Firestore theme saver for logged-in user
   useEffect(() => {
-    const applyTheme = (t: 'light' | 'dark' | 'system') => {
-      let isDark = t === 'dark';
-      if (t === 'system') {
-        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      }
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-        document.documentElement.setAttribute('data-theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.setAttribute('data-theme', 'light');
-      }
-    };
-    applyTheme(theme);
-    localStorage.setItem('studybridge_theme', theme);
-
-    if (theme === 'system') {
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      const listener = (e: MediaQueryListEvent) => {
-        if (e.matches) {
-          document.documentElement.classList.add('dark');
-          document.documentElement.setAttribute('data-theme', 'dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-          document.documentElement.setAttribute('data-theme', 'light');
-        }
-      };
-      mq.addEventListener('change', listener);
-      return () => mq.removeEventListener('change', listener);
+    if (!user) {
+      registerFirestoreSaver(null);
+      return;
     }
-  }, [theme]);
-
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
-    setTheme(newTheme);
-    localStorage.setItem('studybridge_theme', newTheme);
-    let isDark = newTheme === 'dark';
-    if (newTheme === 'system') {
-      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.setAttribute('data-theme', 'light');
-    }
-    if (user) {
+    registerFirestoreSaver((newTheme) => {
       updatePreferences(user.uid, { theme: newTheme }).catch(() => {});
-    }
-  };
+    });
+    return () => registerFirestoreSaver(null);
+  }, [user, registerFirestoreSaver]);
 
   // Check on-device AI capability on load (never throws)
   const refreshDeviceAiCapability = () => {
@@ -203,6 +162,7 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
+        prefsLoadedForUidRef.current = null;
         setSubjects([]);
         setMaterials([]);
         setInteractions([]);
@@ -212,21 +172,23 @@ export default function App() {
           const prefs = await getPreferences(currentUser.uid);
           if (prefs) {
             if (prefs.routingMode) setManualMode(prefs.routingMode);
-            if (prefs.theme) setTheme(prefs.theme);
+            if (prefs.theme) syncThemeFromPreferences(prefs.theme);
             if (prefs.fontSize) setFontSize(prefs.fontSize);
             if (prefs.answerLength) setAnswerLength(prefs.answerLength);
             if (prefs.studyLanguage) setStudyLanguage(prefs.studyLanguage);
             if (prefs.dailyStudyGoal) setDailyGoal(prefs.dailyStudyGoal);
             if (prefs.remindersEnabled !== undefined) setReminders(prefs.remindersEnabled);
           }
+          prefsLoadedForUidRef.current = currentUser.uid;
         } catch (e) {
           console.error("Error loading preferences:", e);
+          prefsLoadedForUidRef.current = currentUser.uid;
         }
       }
       setAuthLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [syncThemeFromPreferences]);
 
   // Real-time Firestore sync with metadata.hasPendingWrites tracking
   useEffect(() => {
@@ -296,7 +258,7 @@ export default function App() {
     if (studyLanguage) {
       localStorage.setItem('studybridge_study_language', studyLanguage);
     }
-    if (!user) return;
+    if (!user || prefsLoadedForUidRef.current !== user.uid) return;
     updatePreferences(user.uid, {
       routingMode: manualMode,
       theme,
@@ -416,28 +378,26 @@ export default function App() {
   if (authLoading) {
     return (
       <BrowserRouter>
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <div className="min-h-screen bg-[var(--bg-app)] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-accent)]" />
         </div>
       </BrowserRouter>
     );
   }
 
-  const isDark = theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage user={user} theme={theme} setTheme={handleThemeChange} />} />
+        <Route path="/" element={<HomePage user={user} theme={theme} setTheme={setTheme} />} />
         <Route path="/login" element={<AuthScreen darkMode={isDark} />} />
-        <Route path="/about" element={<AboutPage theme={theme} setTheme={handleThemeChange} />} />
-        <Route path="/privacy" element={<PrivacyPage theme={theme} setTheme={handleThemeChange} />} />
-        <Route path="/terms" element={<TermsPage theme={theme} setTheme={handleThemeChange} />} />
+        <Route path="/about" element={<AboutPage theme={theme} setTheme={setTheme} />} />
+        <Route path="/privacy" element={<PrivacyPage theme={theme} setTheme={setTheme} />} />
+        <Route path="/terms" element={<TermsPage theme={theme} setTheme={setTheme} />} />
         
         {/* Protected Routes Wrapper */}
         <Route path="/*" element={
           !user ? <Navigate to="/login" replace /> : (
-            <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors selection:bg-blue-600 selection:text-white ${fontSize === 'sm' ? 'text-xs' : fontSize === 'lg' ? 'text-base' : 'text-sm'}`}>
+            <div className={`min-h-screen bg-[var(--bg-app)] text-[var(--text)] flex flex-col font-sans transition-colors selection:bg-[var(--primary)] selection:text-[var(--primary-text)] ${fontSize === 'sm' ? 'text-xs' : fontSize === 'lg' ? 'text-base' : 'text-sm'}`}>
               <RegionExplanationModal
                 isOpen={showRegionPrompt}
                 onConfirm={handleConfirmRegionPrompt}

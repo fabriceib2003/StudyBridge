@@ -16,15 +16,18 @@
     <script>
       (function() {
         try {
-          var theme = localStorage.getItem('studybridge_theme') || 'light';
+          var stored = localStorage.getItem('studybridge_theme');
+          var theme = (stored === 'light' || stored === 'dark' || stored === 'system') ? stored : 'light';
           var fontSize = localStorage.getItem('studybridge_fontsize') || 'md';
           var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (isDark) {
             document.documentElement.classList.add('dark');
             document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.style.colorScheme = 'dark';
           } else {
             document.documentElement.classList.remove('dark');
             document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.style.colorScheme = 'light';
           }
           var rootSize = fontSize === 'sm' ? '14px' : fontSize === 'lg' ? '18px' : '16px';
           document.documentElement.style.fontSize = rootSize;

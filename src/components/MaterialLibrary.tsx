@@ -769,21 +769,21 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
   const visualPagesCount = newPages.filter(p => !!p.image).length;
 
   return (
-    <div className="max-w-[960px] mx-auto px-4 sm:px-6 py-8 space-y-6 animate-fadeIn">
+    <div className="max-w-[960px] mx-auto px-4 sm:px-6 py-8 space-y-6 animate-fadeIn text-[var(--text)]">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Study Materials</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <h2 className="text-2xl font-bold tracking-tight text-[var(--text)]">Study Materials</h2>
+          <p className="text-sm text-[var(--muted)]">
             Import PDFs, slides, diagrams, and recordings. Materials sync with your account with offline persistence.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsManageSubjectsOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-xs transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] font-medium text-xs transition-colors shadow-sm"
           >
-            <Settings className="w-4 h-4 text-slate-500" />
+            <Settings className="w-4 h-4 text-[var(--muted)]" />
             Manage Subjects
           </button>
           <button
@@ -793,7 +793,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
               setNewTitle('');
               setNewSubjectId(selectedSubjectId !== 'all' ? selectedSubjectId : (subjects[0]?.id || ''));
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs sm:text-sm transition-colors shadow-lg shadow-blue-600/20 shrink-0"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-medium text-xs sm:text-sm transition-colors shadow-lg shrink-0"
           >
             <Plus className="w-4 h-4" />
             Import Material
@@ -802,15 +802,15 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
       </div>
 
       {/* Subject Switcher & Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm items-center">
+      <div className="flex flex-col sm:flex-row gap-3 bg-[var(--surface)] p-3.5 rounded-2xl border border-[var(--border)] shadow-sm items-center">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          <Search className="w-4 h-4 text-[var(--muted)] absolute left-3 top-3" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search materials or diagram notes..."
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+            className="w-full pl-9 pr-4 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)]"
           />
         </div>
 
@@ -825,7 +825,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                 setSelectedSubjectId(e.target.value);
               }
             }}
-            className="flex-1 sm:flex-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
+            className="flex-1 sm:flex-none bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-xs text-[var(--text)] focus:outline-none focus:border-[var(--primary)] font-medium cursor-pointer"
           >
             <option value="all">All Subjects</option>
             {subjects.map(s => (
@@ -833,39 +833,39 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                 {s.name} {s.isPrivate ? '(Private)' : ''}
               </option>
             ))}
-            <option value="__NEW__" className="text-blue-600 font-semibold">+ New subject</option>
+            <option value="__NEW__" className="text-[var(--primary-accent)] font-semibold">+ New subject</option>
           </select>
 
           <button
             type="button"
             onClick={() => setIsInlineCreatingSubject(true)}
-            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-slate-700 dark:text-slate-200 transition-colors"
+            className="p-2 bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] rounded-xl text-[var(--primary-accent)] transition-colors"
             title="Create new subject inline"
           >
-            <Plus className="w-4 h-4 text-blue-600" />
+            <Plus className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* Inline Subject Creation Banner if toggled */}
       {isInlineCreatingSubject && (
-        <form onSubmit={handleCreateInlineSubject} className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-3 animate-fadeIn">
+        <form onSubmit={handleCreateInlineSubject} className="bg-[var(--primary-soft-bg)] border border-[var(--primary-soft-border)] p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-3 animate-fadeIn">
           <div className="flex items-center gap-2 w-full sm:w-auto flex-1">
-            <FolderPlus className="w-4 h-4 text-blue-600 shrink-0" />
+            <FolderPlus className="w-4 h-4 text-[var(--primary-accent)] shrink-0" />
             <input
               type="text"
               required
               value={inlineSubName}
               onChange={(e) => setInlineSubName(e.target.value)}
               placeholder="New Subject Name (e.g. Physics, History)..."
-              className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+              className="flex-1 bg-[var(--surface)] border border-[var(--input-border)] rounded-xl px-3 py-1.5 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)]"
               autoFocus
             />
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
             <label 
-              className={`flex items-center gap-1.5 text-xs select-none ${!isDeviceAiAvailable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer text-slate-700 dark:text-slate-300'}`}
+              className={`flex items-center gap-1.5 text-xs select-none ${!isDeviceAiAvailable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer text-[var(--text-secondary)]'}`}
               title={!isDeviceAiAvailable ? "Private subjects require on-device AI, which is not available in this browser. For offline/private AI, use Chrome on a desktop computer." : "Keep this subject private (runs only on-device)"}
             >
               <input
@@ -873,23 +873,23 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                 disabled={!isDeviceAiAvailable}
                 checked={inlineSubIsPrivate}
                 onChange={(e) => setInlineSubIsPrivate(e.target.checked)}
-                className="rounded text-blue-600 w-3.5 h-3.5 disabled:cursor-not-allowed"
+                className="rounded accent-[var(--primary)] w-3.5 h-3.5 disabled:cursor-not-allowed"
               />
               <span className="flex items-center gap-1 text-[11px]">
-                <Lock className="w-3 h-3 text-amber-500" /> Private {!isDeviceAiAvailable && '(Unavailable)'}
+                <Lock className="w-3 h-3 text-[var(--warning)]" /> Private {!isDeviceAiAvailable && '(Unavailable)'}
               </span>
             </label>
 
             <button
               type="submit"
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium shadow"
+              className="px-3.5 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-xl text-xs font-medium shadow"
             >
               Create
             </button>
             <button
               type="button"
               onClick={() => setIsInlineCreatingSubject(false)}
-              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+              className="p-1.5 text-[var(--muted)] hover:text-[var(--text)] rounded-lg"
             >
               <X className="w-4 h-4" />
             </button>
@@ -911,7 +911,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
         >
           <div className="space-y-4">
             {/* Tabs: ONLY Name & Icon, NO sub-labels */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800">
+            <div className="flex border-b border-[var(--border)]">
               {availableTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeImportTab === tab.id;
@@ -920,8 +920,8 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                     key={tab.id}
                     className={`flex-1 py-2.5 px-2 text-xs font-semibold border-b-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                       isActive
-                        ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                        : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                        ? 'border-[var(--primary)] text-[var(--primary-accent)]'
+                        : 'border-transparent text-[var(--muted)] hover:text-[var(--text)]'
                     }`}
                     onClick={() => setActiveImportTab(tab.id)}
                   >
@@ -936,26 +936,26 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
             {activeImportTab === 'Upload' && (
               <div className="space-y-4">
                 {newPages.length === 0 ? (
-                  <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center space-y-3 hover:border-blue-500 transition-colors cursor-pointer relative bg-slate-50/50 dark:bg-slate-800/30">
+                  <div className="border-2 border-dashed border-[var(--border)] rounded-2xl p-8 text-center space-y-3 hover:border-[var(--primary)] transition-colors cursor-pointer relative bg-[var(--surface-subtle)]">
                     <input
                       type="file"
                       onChange={handleFileUpload}
                       accept=".pdf,.png,.jpg,.jpeg,.webp,.pptx,.mp3,.wav,.m4a"
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                     />
-                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
-                      {extractionProgress ? <Loader2 className="w-6 h-6 animate-spin text-blue-600" /> : <Upload className="w-6 h-6" />}
+                    <div className="w-12 h-12 rounded-2xl bg-[var(--primary-soft-bg)] text-[var(--primary-accent)] flex items-center justify-center mx-auto">
+                      {extractionProgress ? <Loader2 className="w-6 h-6 animate-spin" /> : <Upload className="w-6 h-6" />}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      <p className="text-sm font-semibold text-[var(--text)]">
                         {extractionProgress ? 'Processing Document...' : 'Click or drag a file to upload'}
                       </p>
-                      <p className="text-xs text-slate-400 mt-1">
+                      <p className="text-xs text-[var(--muted)] mt-1">
                         {extractionProgress || 'PDFs, lecture slides, textbooks, diagrams, or recordings'}
                       </p>
                     </div>
                     {!extractionProgress && (
-                      <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800/40">
+                      <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--primary-accent)] bg-[var(--primary-soft-bg)] px-3 py-1 rounded-full border border-[var(--primary-soft-border)]">
                         Text & visual diagrams are extracted client-side
                       </div>
                     )}
@@ -964,7 +964,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                   <form onSubmit={handleSave} className="space-y-4">
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                        <label className="text-xs font-semibold text-[var(--text-secondary)] block mb-1">
                           Material Title
                         </label>
                         <input
@@ -973,18 +973,18 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                           value={newTitle}
                           onChange={(e) => setNewTitle(e.target.value)}
                           placeholder="e.g. Chapter 4 Cellular Respiration..."
-                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                          className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)]"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                        <label className="text-xs font-semibold text-[var(--text-secondary)] block mb-1">
                           Assign to Subject
                         </label>
                         <select
                           value={newSubjectId}
                           onChange={(e) => setNewSubjectId(e.target.value)}
-                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                          className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2 text-xs text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
                         >
                           {subjects.map(s => (
                             <option key={s.id} value={s.id}>
@@ -995,13 +995,13 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                       </div>
 
                       {/* Visuals vs Extracted Text tabs */}
-                      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pt-1">
+                      <div className="flex items-center gap-2 border-b border-[var(--border)] pt-1">
                         {visualPagesCount > 0 && (
                           <button
                             type="button"
                             onClick={() => setPreviewTab('visuals')}
                             className={`py-1.5 px-3 text-xs font-semibold border-b-2 ${
-                              previewTab === 'visuals' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500'
+                              previewTab === 'visuals' ? 'border-[var(--primary)] text-[var(--primary-accent)]' : 'border-transparent text-[var(--muted)]'
                             }`}
                           >
                             Visual Diagrams ({visualPagesCount})
@@ -1011,7 +1011,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                           type="button"
                           onClick={() => setPreviewTab('text')}
                           className={`py-1.5 px-3 text-xs font-semibold border-b-2 ${
-                            previewTab === 'text' || visualPagesCount === 0 ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500'
+                            previewTab === 'text' || visualPagesCount === 0 ? 'border-[var(--primary)] text-[var(--primary-accent)]' : 'border-transparent text-[var(--muted)]'
                           }`}
                         >
                           Text Notes ({newPages.length} Pages)
@@ -1020,14 +1020,14 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
 
                       {previewTab === 'visuals' && visualPagesCount > 0 && (
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs text-slate-500">
+                          <div className="flex items-center justify-between text-xs text-[var(--muted)]">
                             <span>Slide {activeSlideIndex + 1} of {newPages.length}</span>
                             <div className="flex gap-1">
                               <button
                                 type="button"
                                 disabled={activeSlideIndex === 0}
                                 onClick={() => setActiveSlideIndex(p => Math.max(0, p - 1))}
-                                className="p-1 rounded bg-slate-100 dark:bg-slate-800 disabled:opacity-40"
+                                className="p-1 rounded bg-[var(--surface-raised)] border border-[var(--border)] disabled:opacity-40"
                               >
                                 <ChevronLeft className="w-3.5 h-3.5" />
                               </button>
@@ -1035,14 +1035,14 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                                 type="button"
                                 disabled={activeSlideIndex === newPages.length - 1}
                                 onClick={() => setActiveSlideIndex(p => Math.min(newPages.length - 1, p + 1))}
-                                className="p-1 rounded bg-slate-100 dark:bg-slate-800 disabled:opacity-40"
+                                className="p-1 rounded bg-[var(--surface-raised)] border border-[var(--border)] disabled:opacity-40"
                               >
                                 <ChevronRight className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </div>
                           {newPages[activeSlideIndex]?.image && (
-                            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-black/5 dark:bg-black/30 p-2 flex items-center justify-center max-h-[220px]">
+                            <div className="border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--surface-raised)] p-2 flex items-center justify-center max-h-[220px]">
                               <img
                                 src={newPages[activeSlideIndex].image}
                                 alt={`Slide ${activeSlideIndex + 1}`}
@@ -1054,7 +1054,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                       )}
 
                       {(previewTab === 'text' || visualPagesCount === 0) && (
-                        <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 max-h-[160px] overflow-y-auto text-xs font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
+                        <div className="bg-[var(--surface-raised)] p-3 rounded-xl border border-[var(--border)] max-h-[160px] overflow-y-auto text-xs font-mono text-[var(--text)] whitespace-pre-wrap">
                           {newPages[activeSlideIndex]?.text || newPages.map(p => p.text).join('\n\n')}
                         </div>
                       )}
@@ -1067,13 +1067,13 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                           setNewPages([]);
                           setNewTitle('');
                         }}
-                        className="px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                        className="px-3 py-2 text-xs font-medium text-[var(--muted)] hover:text-[var(--text)]"
                       >
                         Upload different file
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow transition-colors"
+                        className="px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-xl text-xs font-semibold shadow transition-colors"
                       >
                         Save to Study Library
                       </button>
@@ -1087,24 +1087,24 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
             {activeImportTab === 'Drive' && (
               <div className="space-y-4">
                 {!isDriveConfigured ? (
-                  <div className="p-5 border border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20 rounded-2xl space-y-3">
-                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-semibold text-xs">
+                  <div className="p-5 border border-[var(--warning-border)] bg-[var(--warning-bg)] rounded-2xl space-y-3">
+                    <div className="flex items-center gap-2 text-[var(--warning)] font-semibold text-xs">
                       <AlertCircle className="w-4 h-4" />
                       <span>Google Drive isn't set up yet.</span>
                     </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                       The Google Drive integration requires Google API credentials. Configure the following environment variables in your environment:
                     </p>
-                    <div className="space-y-1.5 text-xs font-mono bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <div className="space-y-1.5 text-xs font-mono bg-[var(--surface)] p-3 rounded-xl border border-[var(--border)]">
                       <div className="flex items-center justify-between">
                         <span>VITE_GOOGLE_API_KEY</span>
-                        <span className={googleApiKey ? 'text-emerald-600 font-semibold' : 'text-rose-500 font-semibold'}>
+                        <span className={googleApiKey ? 'text-[var(--success)] font-semibold' : 'text-[var(--danger)] font-semibold'}>
                           {googleApiKey ? 'Configured' : 'Missing'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span>VITE_GOOGLE_CLIENT_ID</span>
-                        <span className={googleClientId ? 'text-emerald-600 font-semibold' : 'text-rose-500 font-semibold'}>
+                        <span className={googleClientId ? 'text-[var(--success)] font-semibold' : 'text-[var(--danger)] font-semibold'}>
                           {googleClientId ? 'Configured' : 'Missing'}
                         </span>
                       </div>
@@ -1114,32 +1114,32 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                   <div className="space-y-4">
                     {/* Offline notice: ONLY shown on Drive tab when offline */}
                     {!isOnline && (
-                      <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 rounded-xl text-xs flex items-center gap-2">
+                      <div className="p-3 bg-[var(--warning-bg)] border border-[var(--warning-border)] text-[var(--warning)] rounded-xl text-xs flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 shrink-0" />
                         <span>Google Drive needs an internet connection.</span>
                       </div>
                     )}
 
-                    <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-2">
-                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <div className="bg-[var(--surface-raised)] p-4 rounded-2xl border border-[var(--border)] space-y-2">
+                      <h4 className="text-xs font-bold text-[var(--text)]">
                         Import from Google Drive
                       </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                      <p className="text-xs text-[var(--muted)] leading-relaxed">
                         StudyBridge will request read access to only the files you pick. Your Google Drive files and tokens are never stored on our servers.
                       </p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-[var(--muted)]">
                         Supported formats: PDF, Google Docs, Google Slides, PPTX, Images, and Text.
                       </p>
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      <label className="text-xs font-semibold text-[var(--text-secondary)] block mb-1">
                         Assign to Subject
                       </label>
                       <select
                         value={newSubjectId}
                         onChange={(e) => setNewSubjectId(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                        className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2 text-xs text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
                       >
                         {subjects.map(s => (
                           <option key={s.id} value={s.id}>
@@ -1151,12 +1151,12 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
 
                     {/* Iframe Notice */}
                     {window.self !== window.top && (
-                      <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 rounded-xl text-xs flex items-center justify-between gap-2">
+                      <div className="p-3 bg-[var(--warning-bg)] border border-[var(--warning-border)] text-[var(--warning)] rounded-xl text-xs flex items-center justify-between gap-2">
                         <span>Google Drive may not work inside the preview. Open the app in its own tab.</span>
                         <button
                           type="button"
                           onClick={() => window.open(window.location.href, '_blank')}
-                          className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold shrink-0 cursor-pointer"
+                          className="px-3 py-1 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-lg font-semibold shrink-0 cursor-pointer"
                         >
                           Open in new tab
                         </button>
@@ -1167,7 +1167,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                       type="button"
                       onClick={handleOpenGoogleDrive}
                       disabled={!isOnline || isDrivePicking}
-                      className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-semibold flex items-center justify-center gap-2 shadow transition-colors cursor-pointer"
+                      className="w-full py-3 px-4 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-40 disabled:pointer-events-none text-[var(--primary-text)] text-xs font-semibold flex items-center justify-center gap-2 shadow transition-colors cursor-pointer"
                     >
                       {isDrivePicking ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -1179,20 +1179,20 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
 
                     {/* Owner Diagnostics Panel */}
                     {isOwner && (
-                      <div className="border border-slate-300 dark:border-slate-700 rounded-xl p-3 bg-slate-900 text-slate-100 text-[11px] font-mono space-y-2">
+                      <div className="border border-[var(--border)] rounded-xl p-3 bg-[var(--code-block-bg)] text-[var(--code-block-text)] text-[11px] font-mono space-y-2">
                         <div 
                           className="flex items-center justify-between cursor-pointer select-none" 
                           onClick={() => setIsDiagnosticsOpen(!isDiagnosticsOpen)}
                         >
-                          <span className="font-bold flex items-center gap-1.5 text-blue-400">
+                          <span className="font-bold flex items-center gap-1.5 text-[var(--primary-accent)]">
                             <span>⚙️ Drive diagnostics (Owner Only)</span>
                           </span>
-                          <span className="text-slate-400 text-xs">{isDiagnosticsOpen ? 'Hide' : 'Show'}</span>
+                          <span className="text-[var(--muted)] text-xs">{isDiagnosticsOpen ? 'Hide' : 'Show'}</span>
                         </div>
 
                         {isDiagnosticsOpen && (
-                          <div className="space-y-2 pt-2 border-t border-slate-800">
-                            <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-300">
+                          <div className="space-y-2 pt-2 border-t border-[var(--border)]">
+                            <div className="grid grid-cols-2 gap-1 text-[10px] text-[var(--text-secondary)]">
                               <div>Iframe: {window.self !== window.top ? 'Yes' : 'No'}</div>
                               <div>Origin: {window.location.origin}</div>
                               <div>API Key: {googleApiKey ? `${googleApiKey.slice(0, 6)}...` : 'Missing'}</div>
@@ -1206,11 +1206,11 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                             </div>
 
                             {lastTokenError && (
-                              <div className="text-rose-400 text-[10px]">Last Token Error: {lastTokenError}</div>
+                              <div className="text-[var(--danger)] text-[10px]">Last Token Error: {lastTokenError}</div>
                             )}
 
                             <div>
-                              <div className="flex items-center justify-between text-slate-400 mb-1">
+                              <div className="flex items-center justify-between text-[var(--muted)] mb-1">
                                 <span>Recent Logs:</span>
                                 <button
                                   type="button"
@@ -1218,12 +1218,12 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                                     navigator.clipboard.writeText(driveLogs.join('\n'));
                                     showToast("Diagnostics copied to clipboard");
                                   }}
-                                  className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[10px]"
+                                  className="px-2 py-0.5 bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] text-[var(--text)] border border-[var(--border)] rounded text-[10px]"
                                 >
                                   Copy
                                 </button>
                               </div>
-                              <div className="bg-black/40 p-2 rounded max-h-32 overflow-y-auto text-[10px] space-y-0.5 text-slate-300">
+                              <div className="bg-[var(--surface)] border border-[var(--border)] p-2 rounded max-h-32 overflow-y-auto text-[10px] space-y-0.5 text-[var(--text-secondary)]">
                                 {driveLogs.slice(-20).map((l, i) => (
                                   <div key={i}>{l}</div>
                                 ))}
@@ -1235,7 +1235,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                     )}
 
                     {driveError && (
-                      <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 rounded-xl text-xs flex items-center justify-between">
+                      <div className="p-3 bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)] rounded-xl text-xs flex items-center justify-between">
                         <span>{driveError}</span>
                         <button
                           type="button"
@@ -1248,35 +1248,35 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                     )}
 
                     {driveFiles.length > 0 && (
-                      <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-800">
-                        <span className="text-[11px] font-semibold text-slate-500 block">
+                      <div className="space-y-2 pt-1 border-t border-[var(--border)]">
+                        <span className="text-[11px] font-semibold text-[var(--muted)] block">
                           Selected Files ({driveFiles.length})
                         </span>
                         <div className="space-y-1.5 max-h-[160px] overflow-y-auto">
                           {driveFiles.map(file => (
                             <div
                               key={file.id}
-                              className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs border border-slate-200 dark:border-slate-700"
+                              className="flex items-center justify-between p-2.5 bg-[var(--surface-raised)] rounded-xl text-xs border border-[var(--border)]"
                             >
                               <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                <span className="truncate font-medium text-slate-800 dark:text-slate-200">
+                                <FileText className="w-3.5 h-3.5 text-[var(--primary-accent)] shrink-0" />
+                                <span className="truncate font-medium text-[var(--text)]">
                                   {file.name}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {file.status === 'downloading' || file.status === 'extracting' ? (
-                                  <span className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400">
+                                  <span className="flex items-center gap-1 text-[11px] text-[var(--primary-accent)]">
                                     <Loader2 className="w-3 h-3 animate-spin" />
                                     {file.progressMsg || 'Processing...'}
                                   </span>
                                 ) : file.status === 'saved' ? (
-                                  <span className="flex items-center gap-1 text-[11px] text-emerald-600 font-semibold">
+                                  <span className="flex items-center gap-1 text-[11px] text-[var(--success)] font-semibold">
                                     <CheckCircle2 className="w-3 h-3" />
                                     Saved
                                   </span>
                                 ) : (
-                                  <div className="flex items-center gap-1.5 text-[11px] text-rose-600">
+                                  <div className="flex items-center gap-1.5 text-[11px] text-[var(--danger)]">
                                     <span>{file.errorMsg || 'Failed'}</span>
                                     <button
                                       type="button"
@@ -1303,14 +1303,14 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
               <div className="space-y-4">
                 {/* Offline notice: ONLY shown on YouTube tab when offline */}
                 {!isOnline && (
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 rounded-xl text-xs flex items-center gap-2">
+                  <div className="p-3 bg-[var(--warning-bg)] border border-[var(--warning-border)] text-[var(--warning)] rounded-xl text-xs flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>You're offline. This link will be processed when you reconnect.</span>
                   </div>
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                  <label className="text-xs font-semibold text-[var(--text-secondary)] block">
                     YouTube Video URL
                   </label>
                   <input
@@ -1318,45 +1318,45 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                     value={youtubeUrl}
                     onChange={(e) => handleYoutubeUrlChange(e.target.value)}
                     placeholder="https://www.youtube.com/watch?v=... or youtu.be/..."
-                    className={`w-full bg-slate-50 dark:bg-slate-800 border rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none ${
+                    className={`w-full bg-[var(--input-bg)] border rounded-xl p-3 text-xs text-[var(--text)] focus:outline-none ${
                       youtubeUrl && !youtubeVideoId
-                        ? 'border-rose-400 focus:border-rose-500'
-                        : 'border-slate-200 dark:border-slate-700 focus:border-blue-500'
+                        ? 'border-[var(--danger)] focus:border-[var(--danger)]'
+                        : 'border-[var(--input-border)] focus:border-[var(--primary)]'
                     }`}
                   />
                   {youtubeUrl && !youtubeVideoId && (
-                    <p className="text-[11px] text-rose-500 pt-0.5">
+                    <p className="text-[11px] text-[var(--danger)] pt-0.5">
                       Please enter a valid YouTube video link (watch, youtu.be, or shorts).
                     </p>
                   )}
-                  <p className="text-[11px] text-slate-400 pt-0.5">
+                  <p className="text-[11px] text-[var(--muted)] pt-0.5">
                     Works with videos that have captions.
                   </p>
                 </div>
 
                 {/* Video Preview Card */}
                 {youtubeVideoId && (
-                  <div className="border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3 flex gap-3 items-center">
+                  <div className="border border-[var(--border)] bg-[var(--surface-raised)] rounded-2xl p-3 flex gap-3 items-center">
                     {isLoadingYtPreview ? (
-                      <div className="w-24 h-16 rounded-xl bg-slate-200 dark:bg-slate-700 animate-pulse flex items-center justify-center shrink-0">
-                        <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                      <div className="w-24 h-16 rounded-xl bg-[var(--chart-track)] animate-pulse flex items-center justify-center shrink-0">
+                        <Loader2 className="w-4 h-4 animate-spin text-[var(--muted)]" />
                       </div>
                     ) : (
                       <img
                         src={youtubePreview?.thumbnailUrl || `https://i.ytimg.com/vi/${youtubeVideoId}/hqdefault.jpg`}
                         alt="YouTube thumbnail"
-                        className="w-24 h-16 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700 bg-black/10"
+                        className="w-24 h-16 rounded-xl object-cover shrink-0 border border-[var(--border)] bg-[var(--surface-subtle)]"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = `https://i.ytimg.com/vi/${youtubeVideoId}/hqdefault.jpg`;
                         }}
                       />
                     )}
                     <div className="min-w-0 flex-1 space-y-1">
-                      <p className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2">
+                      <p className="text-xs font-bold text-[var(--text)] line-clamp-2">
                         {youtubePreview?.title || (isLoadingYtPreview ? 'Loading video details...' : 'YouTube Video')}
                       </p>
                       {youtubePreview?.channelName && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        <p className="text-[11px] text-[var(--muted)] truncate">
                           {youtubePreview.channelName}
                         </p>
                       )}
@@ -1365,13 +1365,13 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                 )}
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-xs font-semibold text-[var(--text-secondary)] block mb-1">
                     Assign to Subject
                   </label>
                   <select
                     value={newSubjectId}
                     onChange={(e) => setNewSubjectId(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2 text-xs text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
                   >
                     {subjects.map(s => (
                       <option key={s.id} value={s.id}>
@@ -1383,13 +1383,13 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
 
                 {availableYtLangs.length > 1 && (
                   <div>
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    <label className="text-xs font-semibold text-[var(--text-secondary)] block mb-1">
                       Caption Language
                     </label>
                     <select
                       value={selectedYtLang}
                       onChange={(e) => setSelectedYtLang(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2 text-xs text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
                     >
                       {availableYtLangs.map(l => (
                         <option key={l.code} value={l.code}>
@@ -1402,8 +1402,8 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
 
                 {/* Progress bar during multi-step extraction */}
                 {ytImportStep !== 'idle' && ytImportStep !== 'done' && (
-                  <div className="space-y-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 rounded-xl">
-                    <div className="flex items-center justify-between text-xs text-blue-700 dark:text-blue-300 font-semibold">
+                  <div className="space-y-2 p-3 bg-[var(--info-bg)] border border-[var(--info-border)] rounded-xl">
+                    <div className="flex items-center justify-between text-xs text-[var(--info)] font-semibold">
                       <span>
                         {ytImportStep === 'checking' && 'Checking captions...'}
                         {ytImportStep === 'fetching' && 'Fetching transcript...'}
@@ -1411,9 +1411,9 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                       </span>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     </div>
-                    <div className="w-full bg-blue-200 dark:bg-blue-900 h-1.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-[var(--chart-track)] h-1.5 rounded-full overflow-hidden">
                       <div
-                        className="bg-blue-600 h-full transition-all duration-300"
+                        className="bg-[var(--primary)] h-full transition-all duration-300"
                         style={{
                           width: ytImportStep === 'checking' ? '33%' : ytImportStep === 'fetching' ? '66%' : '95%'
                         }}
@@ -1424,7 +1424,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
 
                 {/* Error message with plain language and Retry */}
                 {ytImportError && (
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 rounded-xl text-xs flex items-center justify-between">
+                  <div className="p-3 bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger)] rounded-xl text-xs flex items-center justify-between">
                     <span>{ytImportError}</span>
                     <button
                       type="button"
@@ -1441,7 +1441,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                   type="button"
                   onClick={handleImportYoutube}
                   disabled={!youtubeVideoId || (ytImportStep !== 'idle' && ytImportStep !== 'done')}
-                  className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-semibold flex items-center justify-center gap-2 shadow transition-colors cursor-pointer"
+                  className="w-full py-3 px-4 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-40 disabled:pointer-events-none text-[var(--primary-text)] text-xs font-semibold flex items-center justify-center gap-2 shadow transition-colors cursor-pointer"
                 >
                   <Video className="w-4 h-4" />
                   <span>{isOnline ? 'Import video' : 'Save link for later'}</span>
@@ -1453,7 +1453,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
             {activeImportTab === 'Paste' && (
               <form onSubmit={handleSavePaste} className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-xs font-semibold text-[var(--text-secondary)] block mb-1">
                     Note Title
                   </label>
                   <input
@@ -1462,18 +1462,18 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                     value={pasteTitle}
                     onChange={(e) => setPasteTitle(e.target.value)}
                     placeholder="e.g. Pasted Study Note, Anatomy Lecture Summary..."
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2 text-xs text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-xs font-semibold text-[var(--text-secondary)] block mb-1">
                     Assign to Subject
                   </label>
                   <select
                     value={newSubjectId}
                     onChange={(e) => setNewSubjectId(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2 text-xs text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
                   >
                     {subjects.map(s => (
                       <option key={s.id} value={s.id}>
@@ -1484,7 +1484,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="text-xs font-semibold text-[var(--text-secondary)] block mb-1">
                     Study Content
                   </label>
                   <textarea
@@ -1493,14 +1493,14 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                     value={pasteContent}
                     onChange={(e) => setPasteContent(e.target.value)}
                     placeholder="Paste your study notes, textbook chapters, or transcript text here..."
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-mono leading-relaxed"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl p-3 text-xs text-[var(--text)] focus:outline-none focus:border-[var(--primary)] font-mono leading-relaxed"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={!pasteContent.trim()}
-                  className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-semibold shadow transition-colors cursor-pointer"
+                  className="w-full py-3 px-4 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-40 disabled:pointer-events-none text-[var(--primary-text)] text-xs font-semibold shadow transition-colors cursor-pointer"
                 >
                   Save Material
                 </button>
@@ -1523,7 +1523,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
               <button
                 type="button"
                 onClick={() => setInspectingMaterial(null)}
-                className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -1534,7 +1534,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                   setInspectingMaterial(null);
                   handleStudyMaterial(mat);
                 }}
-                className="bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
               >
                 <BookOpen className="w-4 h-4" />
                 <span>Load into Study Desk</span>
@@ -1545,36 +1545,36 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
       >
         {isLoadingInspect ? (
           <div className="py-12 flex flex-col items-center justify-center space-y-2">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            <p className="text-xs text-slate-500">Loading visual slides from local storage...</p>
+            <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)]" />
+            <p className="text-xs text-[var(--muted)]">Loading visual slides from local storage...</p>
           </div>
         ) : inspectingMaterial ? (
           <div className="space-y-4">
             {inspectingPages.length > 0 && inspectingPages[inspectSlideIndex]?.image && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                <div className="flex items-center justify-between text-xs text-[var(--muted)]">
+                  <span className="font-semibold text-[var(--text-secondary)]">
                     Slide / Page {inspectSlideIndex + 1} of {inspectingPages.length}
                   </span>
                   <div className="flex items-center gap-1">
                     <button
                       disabled={inspectSlideIndex === 0}
                       onClick={() => setInspectSlideIndex(prev => Math.max(0, prev - 1))}
-                      className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 disabled:opacity-40 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+                      className="p-2 rounded-lg bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] text-[var(--text-secondary)] disabled:opacity-40 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
                     <button
                       disabled={inspectSlideIndex === inspectingPages.length - 1}
                       onClick={() => setInspectSlideIndex(prev => Math.min(inspectingPages.length - 1, prev + 1))}
-                      className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 disabled:opacity-40 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+                      className="p-2 rounded-lg bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] text-[var(--text-secondary)] disabled:opacity-40 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black/5 dark:bg-black/30 p-2 flex items-center justify-center max-h-[300px]">
+                <div className="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--surface-subtle)] p-2 flex items-center justify-center max-h-[300px]">
                   <img
                     src={inspectingPages[inspectSlideIndex].image}
                     alt={`Slide ${inspectSlideIndex + 1}`}
@@ -1585,10 +1585,10 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
             )}
 
             <div className="space-y-1">
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
+              <span className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider block">
                 Extracted Text Context
               </span>
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 max-h-[180px] overflow-y-auto text-xs font-mono text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
+              <div className="bg-[var(--surface-raised)] p-4 rounded-xl border border-[var(--border)] max-h-[180px] overflow-y-auto text-xs font-mono text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
                 {inspectingPages[inspectSlideIndex]?.text || inspectingMaterial.contentPreview || 'No text extracted.'}
               </div>
             </div>
@@ -1603,7 +1603,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
         title="Move to Another Subject"
         subtitle={movingMaterial ? `Select the subject to move "${movingMaterial.title}" to:` : undefined}
         icon={
-          <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-[var(--info-bg)] text-[var(--info)] flex items-center justify-center shrink-0">
             <ArrowRightLeft className="w-4 h-4" />
           </div>
         }
@@ -1614,7 +1614,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
             <button
               type="button"
               onClick={() => setMovingMaterial(null)}
-              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              className="border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -1622,7 +1622,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
               type="button"
               onClick={handleConfirmMove}
               disabled={!targetMoveSubjectId || targetMoveSubjectId === movingMaterial?.subjectId}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold shadow transition-colors cursor-pointer"
+              className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-50 text-[var(--primary-text)] font-semibold shadow transition-colors cursor-pointer"
             >
               Move Material
             </button>
@@ -1631,13 +1631,13 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
       >
         {movingMaterial && (
           <div className="space-y-3 pt-1">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+            <label className="text-xs font-semibold text-[var(--text-secondary)] block">
               Destination Subject
             </label>
             <select
               value={targetMoveSubjectId}
               onChange={(e) => setTargetMoveSubjectId(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-base sm:text-sm text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500 min-h-[44px]"
+              className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl p-3 text-base sm:text-sm text-[var(--text)] font-medium focus:outline-none focus:border-[var(--primary)] min-h-[44px]"
             >
               {subjects.map(s => (
                 <option key={s.id} value={s.id}>
@@ -1652,17 +1652,17 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
       {/* Materials Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredMaterials.length === 0 ? (
-          <div className="col-span-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+          <div className="col-span-full bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-12 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--surface-raised)] text-[var(--muted)] flex items-center justify-center mx-auto">
               <FileText className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white">No materials found</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <h3 className="text-sm font-bold text-[var(--text)]">No materials found</h3>
+            <p className="text-xs text-[var(--muted)] max-w-sm mx-auto">
               {searchQuery ? "Try refining your search terms or subject filter." : "Import your first document, textbook chapter, or slide deck to begin studying."}
             </p>
             <button
               onClick={() => setIsAddingMaterial(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 transition-colors shadow"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--primary)] text-[var(--primary-text)] text-xs font-semibold hover:bg-[var(--primary-hover)] transition-colors shadow"
             >
               <Plus className="w-3.5 h-3.5" />
               Upload First Document
@@ -1676,11 +1676,11 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
             return (
               <div 
                 key={mat.id} 
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between relative"
+                className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm space-y-3 hover:border-[var(--border-strong)] transition-all flex flex-col justify-between relative"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[var(--surface-raised)] text-[var(--text-secondary)] border border-[var(--border)]">
                       {sub?.name || 'General Subject'}
                     </span>
                     
@@ -1688,15 +1688,15 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                       {/* Sync status per item: "Saved to your account" vs "Waiting to sync" */}
                       <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
                         mat.hasPendingWrites
-                          ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
-                          : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
+                          ? 'bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning-border)]'
+                          : 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success-border)]'
                       }`}>
                         <Cloud className="w-2.5 h-2.5" />
                         {mat.hasPendingWrites ? 'Waiting to sync' : 'Saved to your account'}
                       </span>
 
                       {mat.hasImages && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--primary-soft-bg)] text-[var(--primary-accent)] border border-[var(--primary-soft-border)]">
                           <ImageIcon className="w-3 h-3" />
                           Visuals
                         </span>
@@ -1704,27 +1704,27 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                     </div>
                   </div>
 
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
+                  <h3 className="text-sm font-bold text-[var(--text)] line-clamp-1">
                     {mat.title}
                   </h3>
 
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-[var(--muted)] line-clamp-2 leading-relaxed">
                     {mat.contentPreview || 'Notes and visual diagrams processed and ready for analysis.'}
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleOpenInspect(mat)}
-                      className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium text-[11px] transition-colors"
+                      className="inline-flex items-center gap-1 text-[var(--text-secondary)] hover:text-[var(--primary-accent)] font-medium text-[11px] transition-colors"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       View Visuals
                     </button>
                     <button
                       onClick={() => handleStudyMaterial(mat)}
-                      className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline font-semibold text-[11px]"
+                      className="inline-flex items-center gap-1 text-[var(--primary-accent)] hover:underline font-semibold text-[11px]"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
                       Study
@@ -1735,22 +1735,22 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                   <div className="relative">
                     <button
                       onClick={() => setActiveMenuId(isMenuOpen ? null : mat.id)}
-                      className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className="p-1 text-[var(--muted)] hover:text-[var(--text)] rounded-lg hover:bg-[var(--hover)]"
                     >
                       <MoreVertical className="w-3.5 h-3.5" />
                     </button>
 
                     {isMenuOpen && (
-                      <div className="absolute right-0 bottom-7 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl py-1.5 z-30 animate-fadeIn text-xs">
+                      <div className="absolute right-0 bottom-7 w-44 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-xl py-1.5 z-30 animate-fadeIn text-xs">
                         <button
                           onClick={() => {
                             setMovingMaterial(mat);
                             setTargetMoveSubjectId(mat.subjectId);
                             setActiveMenuId(null);
                           }}
-                          className="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                          className="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-[var(--hover)] text-[var(--text-secondary)]"
                         >
-                          <ArrowRightLeft className="w-3.5 h-3.5 text-blue-500" />
+                          <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--primary-accent)]" />
                           Move to subject...
                         </button>
                         <button
@@ -1760,7 +1760,7 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
                               onDeleteMaterial(mat.id);
                             }
                           }}
-                          className="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400"
+                          className="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-[var(--danger-bg)] text-[var(--danger)]"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           Delete material
@@ -1789,8 +1789,8 @@ export const MaterialLibrary: React.FC<MaterialLibraryProps> = ({
 
       {/* Floating Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-semibold animate-slideUp">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[var(--toast-bg)] text-[var(--toast-text)] border border-[var(--toast-border)] px-4 py-2.5 rounded-xl shadow-2xl text-xs font-semibold animate-slideUp">
+          <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
           <span>{toastMsg}</span>
         </div>
       )}

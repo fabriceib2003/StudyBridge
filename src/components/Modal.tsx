@@ -173,7 +173,7 @@ export const Modal: React.FC<ModalProps> = ({
   return createPortal(
     <div
       onClick={handleOverlayClick}
-      className={`fixed inset-0 z-[100] flex ${overlayPositionClasses} bg-black/60 dark:bg-black/75 backdrop-blur-sm select-none ${containerClassName}`}
+      className={`fixed inset-0 z-[100] flex ${overlayPositionClasses} bg-[var(--overlay)] backdrop-blur-sm select-none ${containerClassName}`}
       style={{
         paddingBottom: isConfirm ? 'max(1rem, env(safe-area-inset-bottom, 0px))' : undefined
       }}
@@ -186,14 +186,14 @@ export const Modal: React.FC<ModalProps> = ({
         aria-label={ariaLabel}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className={`relative flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl focus:outline-none select-text ${widthClasses} ${sheetShapeClasses} ${className}`}
+        className={`relative flex flex-col bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] shadow-2xl focus:outline-none select-text ${widthClasses} ${sheetShapeClasses} ${className}`}
         style={{
           boxSizing: 'border-box'
         }}
       >
         {/* Fixed Header */}
         {showHeader && (title || showCloseButton) && (
-          <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+          <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               {icon && (
                 <div className="shrink-0 flex items-center justify-center">
@@ -204,13 +204,13 @@ export const Modal: React.FC<ModalProps> = ({
                 {title && (
                   <h3
                     id={titleId}
-                    className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate"
+                    className="text-base sm:text-lg font-bold text-[var(--text)] truncate"
                   >
                     {title}
                   </h3>
                 )}
                 {subtitle && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                  <p className="text-xs text-[var(--muted)] mt-0.5 line-clamp-2">
                     {subtitle}
                   </p>
                 )}
@@ -225,7 +225,7 @@ export const Modal: React.FC<ModalProps> = ({
                   onClick={onClose}
                   disabled={isDestructiveActionRunning}
                   aria-label="Close dialog"
-                  className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-50 cursor-pointer"
+                  className="p-2 -mr-2 text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--hover)] rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-50 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -242,7 +242,7 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Fixed Footer */}
         {footer && (
           <div
-            className="shrink-0 px-5 sm:px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 rounded-b-2xl sm:rounded-b-3xl"
+            className="shrink-0 px-5 sm:px-6 py-4 border-t border-[var(--border-subtle)] bg-[var(--surface-subtle)] rounded-b-2xl sm:rounded-b-3xl"
             style={{
               paddingBottom: !isConfirm ? 'max(1rem, env(safe-area-inset-bottom, 0px))' : undefined
             }}

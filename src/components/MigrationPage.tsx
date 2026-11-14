@@ -105,38 +105,38 @@ export const MigrationPage: React.FC<MigrationPageProps> = ({ user, subjects, on
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
-      <h2 className="text-xl font-bold">Data Migration</h2>
+      <h2 className="text-xl font-bold text-[var(--text)]">Data Migration</h2>
       
       {!user ? (
-        <div className="p-4 bg-amber-50 text-amber-800 rounded-xl text-sm">
+        <div className="p-4 bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning-border)] rounded-xl text-sm">
           Please sign in to your StudyBridge account above first so we know where to import your data.
         </div>
       ) : !legacyAuth ? (
-        <button onClick={initializeLegacyApp} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition">
+        <button onClick={initializeLegacyApp} className="px-4 py-2 bg-[var(--primary)] text-[var(--primary-text)] rounded-xl text-sm font-medium hover:bg-[var(--primary-hover)] transition">
           Connect Legacy App
         </button>
       ) : !legacyAuth.currentUser ? (
-        <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-sm text-slate-700">Sign in with your credentials from the old version:</p>
+        <div className="space-y-4 bg-[var(--surface-raised)] p-4 rounded-xl border border-[var(--border)]">
+          <p className="text-sm text-[var(--text-secondary)]">Sign in with your credentials from the old version:</p>
           <div className="space-y-2">
             <input 
               type="email" 
               placeholder="Email address" 
               value={email} 
               onChange={e => setEmail(e.target.value)} 
-              className="block w-full p-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              className="block w-full p-2.5 text-sm bg-[var(--input-bg)] text-[var(--text)] border border-[var(--input-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" 
             />
             <input 
               type="password" 
               placeholder="Password" 
               value={password} 
               onChange={e => setPassword(e.target.value)} 
-              className="block w-full p-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              className="block w-full p-2.5 text-sm bg-[var(--input-bg)] text-[var(--text)] border border-[var(--input-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" 
             />
             <div className="flex gap-2 pt-2">
               <button 
                 onClick={handleLegacyLogin} 
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+                className="px-4 py-2 bg-[var(--primary)] text-[var(--primary-text)] rounded-lg text-sm font-medium hover:bg-[var(--primary-hover)] transition"
               >
                 Sign In with Email
               </button>
@@ -149,36 +149,36 @@ export const MigrationPage: React.FC<MigrationPageProps> = ({ user, subjects, on
                     setError(e.message);
                   }
                 }} 
-                className="px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
+                className="px-4 py-2 bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border)] rounded-lg text-sm font-medium hover:bg-[var(--hover)] transition"
               >
                 Sign In with Google
               </button>
             </div>
           </div>
-          {error && <p className="text-xs text-rose-500">{error}</p>}
+          {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-slate-700">Connected to legacy account: <strong>{legacyAuth.currentUser.email || legacyAuth.currentUser.uid}</strong></p>
+          <p className="text-sm text-[var(--text-secondary)]">Connected to legacy account: <strong>{legacyAuth.currentUser.email || legacyAuth.currentUser.uid}</strong></p>
           {migrationStatus === 'idle' && (
-            <button onClick={startMigration} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition">
+            <button onClick={startMigration} className="px-4 py-2 bg-[var(--primary)] text-[var(--primary-text)] rounded-xl text-sm font-medium hover:bg-[var(--primary-hover)] transition">
               Start Migration Now
             </button>
           )}
           {migrationStatus === 'migrating' && (
-            <div className="flex items-center gap-2 text-sm text-blue-600 font-medium">
+            <div className="flex items-center gap-2 text-sm text-[var(--primary-accent)] font-medium">
               <Loader2 className="animate-spin w-4 h-4" /> Migrating all your materials, chunks, subjects and results...
             </div>
           )}
           {migrationStatus === 'error' && (
-            <div className="text-rose-500 text-sm flex items-center gap-2">
+            <div className="text-[var(--danger)] text-sm flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" /> {error} 
               <button onClick={startMigration} className="underline font-medium ml-2">Retry</button>
             </div>
           )}
           {migrationStatus === 'complete' && summary && (
-            <div className="bg-emerald-50 text-emerald-800 p-4 rounded-xl text-sm space-y-2 border border-emerald-200">
-              <p className="font-bold flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-600" /> Migration complete!</p>
+            <div className="bg-[var(--success-bg)] text-[var(--success)] p-4 rounded-xl text-sm space-y-2 border border-[var(--success-border)]">
+              <p className="font-bold flex items-center gap-2"><CheckCircle2 className="w-5 h-5" /> Migration complete!</p>
               <p>Documents copied into new database: <strong>{summary.total}</strong></p>
               <p>Documents skipped (already existed): <strong>{summary.skipped}</strong></p>
             </div>

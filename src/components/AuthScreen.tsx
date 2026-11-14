@@ -92,36 +92,36 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4 selection:bg-blue-600 selection:text-white transition-colors">
-      <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
+    <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text)] flex items-center justify-center p-4 selection:bg-[var(--primary)] selection:text-[var(--primary-text)] transition-colors">
+      <div className="max-w-md w-full bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 shadow-2xl space-y-6">
         
         {/* Logo & Header */}
         <div className="relative text-center space-y-2">
-          <Link to="/" className="absolute -top-4 -left-4 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <Link to="/" className="absolute -top-4 -left-4 p-2 rounded-full hover:bg-[var(--hover)] text-[var(--muted)] hover:text-[var(--text)] transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l9-9 9 9m-9-9v18" />
             </svg>
           </Link>
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/20 text-white">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[var(--primary)] via-[var(--primary-hover)] to-[var(--content-flashcards)] flex items-center justify-center mx-auto shadow-lg text-[var(--primary-text)]">
             <Brain className="w-7 h-7" />
           </div>
           <h1 className="text-xl font-bold tracking-tight">Welcome to StudyBridge</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-[var(--muted)]">
             Offline-first AI study assistant with Firebase AI Logic hybrid inference
           </p>
         </div>
 
         {/* Error / Success Banners */}
         {errorMessage && (
-          <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+          <div className="bg-[var(--danger-bg)] border border-[var(--danger-border)] rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-[var(--danger)]">
+            <AlertCircle className="w-4 h-4 shrink-0 text-[var(--danger)] mt-0.5" />
             <span className="leading-relaxed">{errorMessage}</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-emerald-700 dark:text-emerald-300">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500 mt-0.5" />
+          <div className="bg-[var(--success-bg)] border border-[var(--success-border)] rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-[var(--success)]">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--success)] mt-0.5" />
             <span className="leading-relaxed">{successMessage}</span>
           </div>
         )}
@@ -130,32 +130,32 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
         <form onSubmit={handleEmailAuth} className="space-y-4">
           {!isForgotPassword && isSignUp && (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Full Name</label>
+              <label className="text-xs font-medium text-[var(--text-secondary)]">Full Name</label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-[var(--muted)] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   required
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Alex Student"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl pl-9 pr-4 py-2.5 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)]"
                 />
               </div>
             </div>
           )}
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Email Address</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Email Address</label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Mail className="w-4 h-4 text-[var(--muted)] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="student@university.edu"
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl pl-9 pr-4 py-2.5 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)]"
               />
             </div>
           </div>
@@ -163,7 +163,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
           {!isForgotPassword && (
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Password</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Password</label>
                 {!isSignUp && (
                   <button
                     type="button"
@@ -172,21 +172,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
                       setErrorMessage(null);
                       setSuccessMessage(null);
                     }}
-                    className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                    className="text-[11px] text-[var(--primary-accent)] hover:underline"
                   >
                     Forgot password?
                   </button>
                 )}
               </div>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-[var(--muted)] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl pl-9 pr-4 py-2.5 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)]"
                 />
               </div>
             </div>
@@ -195,7 +195,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-medium text-xs shadow-lg transition-all disabled:opacity-50"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -212,15 +212,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
         {!isForgotPassword && (
           <div className="space-y-4">
             <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-              <span className="flex-shrink mx-4 text-[11px] text-slate-400 uppercase tracking-wider">or</span>
-              <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+              <div className="flex-grow border-t border-[var(--border)]"></div>
+              <span className="flex-shrink mx-4 text-[11px] text-[var(--muted)] uppercase tracking-wider">or</span>
+              <div className="flex-grow border-t border-[var(--border)]"></div>
             </div>
 
             <button
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 transition-all disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text-secondary)] transition-all disabled:opacity-50"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -234,7 +234,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
         )}
 
         {/* Footer Toggle */}
-        <div className="text-center text-xs text-slate-500 dark:text-slate-400 pt-2">
+        <div className="text-center text-xs text-[var(--muted)] pt-2">
           {isForgotPassword ? (
             <button
               onClick={() => {
@@ -242,7 +242,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
                 setErrorMessage(null);
                 setSuccessMessage(null);
               }}
-              className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+              className="text-[var(--primary-accent)] font-medium hover:underline"
             >
               Back to Sign In
             </button>
@@ -255,7 +255,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
                   setErrorMessage(null);
                   setSuccessMessage(null);
                 }}
-                className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                className="text-[var(--primary-accent)] font-medium hover:underline"
               >
                 Sign In
               </button>
@@ -269,7 +269,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
                   setErrorMessage(null);
                   setSuccessMessage(null);
                 }}
-                className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                className="text-[var(--primary-accent)] font-medium hover:underline"
               >
                 Sign Up
               </button>
@@ -278,10 +278,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
         </div>
 
         {/* Public Footer Links */}
-        <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-center gap-6 text-[11px] text-slate-400">
-          <Link to="/about" className="hover:underline">About</Link>
-          <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
-          <Link to="/terms" className="hover:underline">Terms of Service</Link>
+        <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center justify-center gap-6 text-[11px] text-[var(--muted)]">
+          <Link to="/about" className="hover:text-[var(--text)] hover:underline">About</Link>
+          <Link to="/privacy" className="hover:text-[var(--text)] hover:underline">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-[var(--text)] hover:underline">Terms of Service</Link>
         </div>
 
       </div>

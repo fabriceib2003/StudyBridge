@@ -1,47 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, ArrowLeft } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
+import { ThemeMode, useTheme } from '../contexts/ThemeContext';
 
 interface TermsPageProps {
-  theme?: 'light' | 'dark' | 'system';
-  setTheme?: (theme: 'light' | 'dark' | 'system') => void;
+  theme?: ThemeMode;
+  setTheme?: (theme: ThemeMode) => void;
 }
 
-export const TermsPage: React.FC<TermsPageProps> = ({ theme: propTheme, setTheme: propSetTheme }) => {
-  const [localTheme, setLocalTheme] = useState<'light' | 'dark' | 'system'>(() => {
-    return (localStorage.getItem('studybridge_theme') as any) || 'light';
-  });
-
-  const activeTheme = propTheme || localTheme;
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
-    if (propSetTheme) {
-      propSetTheme(newTheme);
-    } else {
-      setLocalTheme(newTheme);
-      localStorage.setItem('studybridge_theme', newTheme);
-      let isDark = newTheme === 'dark';
-      if (newTheme === 'system') {
-        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      }
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-        document.documentElement.setAttribute('data-theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.setAttribute('data-theme', 'light');
-      }
-    }
-  };
+export const TermsPage: React.FC<TermsPageProps> = () => {
+  const { theme: activeTheme, setTheme: handleThemeChange } = useTheme();
 
   return (
-    <div className="min-h-screen font-sans transition-colors" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text)' }}>
+    <div className="min-h-screen font-sans transition-colors bg-[var(--bg-app)] text-[var(--text)]">
       {/* Header */}
-      <header className="border-b px-6 py-4 flex items-center justify-between max-w-[720px] mx-auto" style={{ borderColor: 'var(--border)' }}>
+      <header className="border-b border-[var(--border)] px-6 py-4 flex items-center justify-between max-w-[720px] mx-auto">
         <Link 
           to="/" 
-          className="inline-flex items-center gap-2 text-sm font-medium transition-opacity hover:opacity-80"
-          style={{ color: 'var(--primary)' }}
+          className="inline-flex items-center gap-2 text-sm font-medium text-[var(--primary-accent)] transition-opacity hover:opacity-80"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to StudyBridge
@@ -51,12 +28,12 @@ export const TermsPage: React.FC<TermsPageProps> = ({ theme: propTheme, setTheme
 
       {/* Main Content */}
       <main className="max-w-[720px] mx-auto px-6 py-12 space-y-8 animate-fadeIn">
-        <div className="space-y-2 border-b pb-6" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center gap-2.5" style={{ color: 'var(--primary)' }}>
+        <div className="space-y-2 border-b border-[var(--border)] pb-6">
+          <div className="flex items-center gap-2.5 text-[var(--primary-accent)]">
             <FileText className="w-6 h-6" />
-            <h1 className="text-2xl font-bold tracking-tight">Terms of Service</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">Terms of Service</h1>
           </div>
-          <p className="text-xs" style={{ color: 'var(--muted)' }}>
+          <p className="text-xs text-[var(--muted)]">
             Last updated: November 10, 2026
           </p>
         </div>

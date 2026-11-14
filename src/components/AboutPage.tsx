@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Brain, Sparkles, Shield, ArrowLeft, CheckCircle2, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
-import { auth, db, firebaseConfig, checkAppCheckToken, isAppCheckInCooldown, markAppCheckFailure, getAppCheckErrorMessage, ai } from '../services/firebaseService';
+import { auth, db, firebaseConfig, getAppCheckStatus, isAppCheckInCooldown, markAppCheckFailure, getAppCheckErrorMessage, ai } from '../services/firebaseService';
 import { checkOnDeviceAIAvailability, InferenceMode } from '../services/aiService';
 import { getDocs, collection, query, limit } from 'firebase/firestore';
 import { getGenerativeModel } from 'firebase/ai';
@@ -30,19 +30,20 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme: propTheme, setTheme
     signedIn: boolean;
     onDeviceStatus: string;
     aiTestResult: string;
+    aiTestSuccess: boolean;
     aiSourceUsed: string;
     onlineStatus: boolean;
     serviceWorkerActive: boolean;
     persistenceActive: boolean;
-    appCheckPresent: boolean;
+    appCheckStatus: 'active' | 'in_cooldown' | 'bypassed' | 'missing';
   } | null>(null);
 
   const runReadinessCheck = async () => {
     setReadinessRunning(true);
     let firestoreReachable = false;
     let aiTestResult = "Not tested";
-    let aiSourceUsed = "N/A";
-    let appCheckPresent = false;
+    let aiTestSuccess = false;
+    let aiSourceUsed = "None";
 
     try {
       if (auth.currentUser) {
@@ -55,17 +56,14 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme: propTheme, setTheme
       firestoreReachable = false;
     }
 
-    try {
-      appCheckPresent = await checkAppCheckToken();
-    } catch {
-      appCheckPresent = false;
-    }
+    const appCheckStatus = await getAppCheckStatus();
 
     try {
       if (ai) {
         if (isAppCheckInCooldown()) {
-          aiTestResult = getAppCheckErrorMessage();
-          aiSourceUsed = 'App Check Cooldown';
+          aiTestResult = "Throttled (App Check cooldown: 10s)";
+          aiSourceUsed = "None (Cooldown Active)";
+          aiTestSuccess = false;
         } else {
           const model = getGenerativeModel(ai, {
             mode: InferenceMode.PREFER_ON_DEVICE,
@@ -73,22 +71,31 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme: propTheme, setTheme
           });
           const res = await model.generateContent("Ping");
           const text = typeof (res as any).text === 'function' ? (res as any).text() : (res as any).text || (res as any).response?.text() || 'OK';
-          aiTestResult = text ? "Success" : "Empty response";
-          aiSourceUsed = (res as any)?.inferenceSource || 'Cloud / On-Device';
+          aiTestResult = text ? "Success (Operational)" : "Empty response";
+          aiSourceUsed = (res as any)?.inferenceSource || 'Cloud (Gemini 2.5 Flash)';
+          aiTestSuccess = Boolean(text);
         }
       }
     } catch (e: any) {
       const errMsg = (e?.message || String(e)).toLowerCase();
       if (errMsg.includes('appcheck') || errMsg.includes('app check') || errMsg.includes('recaptcha')) {
         markAppCheckFailure();
-        aiTestResult = getAppCheckErrorMessage();
+        aiTestResult = "App Check token required / rejected";
       } else {
-        aiTestResult = `Error: ${e.message || 'Failed'}`;
+        aiTestResult = `Error: ${e.message || 'Call failed'}`;
       }
-      aiSourceUsed = 'Cloud Fallback';
+      aiSourceUsed = "None (Call Failed)";
+      aiTestSuccess = false;
     }
 
     const deviceCheck = await checkOnDeviceAIAvailability();
+
+    let persistenceActive = false;
+    try {
+      persistenceActive = typeof window !== 'undefined' && 'indexedDB' in window && Boolean(window.indexedDB);
+    } catch {
+      persistenceActive = false;
+    }
 
     setReadinessResults({
       configLoaded: Boolean(firebaseConfig && firebaseConfig.projectId),
@@ -96,11 +103,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme: propTheme, setTheme
       signedIn: Boolean(auth.currentUser),
       onDeviceStatus: deviceCheck.status,
       aiTestResult,
+      aiTestSuccess,
       aiSourceUsed,
-      onlineStatus: navigator.onLine,
+      onlineStatus: typeof navigator !== 'undefined' ? navigator.onLine : true,
       serviceWorkerActive: typeof navigator !== 'undefined' && 'serviceWorker' in navigator && Boolean(navigator.serviceWorker.controller),
-      persistenceActive: true,
-      appCheckPresent
+      persistenceActive,
+      appCheckStatus
     });
 
     setReadinessRunning(false);
@@ -212,12 +220,34 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme: propTheme, setTheme
 
                 <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
                   <span className="font-medium text-slate-700 dark:text-slate-300">Tiny AI Logic Test</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{readinessResults.aiTestResult}</span>
+                  <span className={`font-semibold flex items-center gap-1.5 ${
+                    readinessResults.aiTestSuccess
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-rose-500 dark:text-rose-400 text-[11px]'
+                  }`}>
+                    {readinessResults.aiTestSuccess ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span>{readinessResults.aiTestResult}</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                        <span className="text-right max-w-[210px] truncate" title={readinessResults.aiTestResult}>{readinessResults.aiTestResult}</span>
+                      </>
+                    )}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
                   <span className="font-medium text-slate-700 dark:text-slate-300">AI Inference Source Used</span>
-                  <span className="font-mono text-purple-600 dark:text-purple-400">{readinessResults.aiSourceUsed}</span>
+                  <span className={`font-mono text-xs ${
+                    readinessResults.aiTestSuccess
+                      ? 'text-purple-600 dark:text-purple-400 font-semibold'
+                      : 'text-slate-400 dark:text-slate-500 italic'
+                  }`}>
+                    {readinessResults.aiSourceUsed}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
@@ -238,9 +268,39 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme: propTheme, setTheme
                 </div>
 
                 <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
-                  <span className="font-medium text-slate-700 dark:text-slate-300">App Check Token Present</span>
-                  {readinessResults.appCheckPresent ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <span className="text-amber-500 text-[11px]">Pending / Debug</span>}
+                  <span className="font-medium text-slate-700 dark:text-slate-300">App Check Status</span>
+                  {readinessResults.appCheckStatus === 'active' ? (
+                    <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      Active Token
+                    </span>
+                  ) : readinessResults.appCheckStatus === 'bypassed' ? (
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                      Bypassed in Preview
+                    </span>
+                  ) : readinessResults.appCheckStatus === 'in_cooldown' ? (
+                    <span className="text-amber-600 dark:text-amber-400 text-[11px] bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                      Cooldown (10s)
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 font-semibold text-xs">
+                      <XCircle className="w-4 h-4 text-rose-500" />
+                      Token Missing
+                    </span>
+                  )}
                 </div>
+
+                {readinessResults.appCheckStatus === 'bypassed' && !readinessResults.aiTestSuccess && (
+                  <div className="col-span-1 sm:col-span-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs leading-relaxed">
+                    <p className="font-semibold mb-1">Why is this test failing in preview?</p>
+                    <p>
+                      Your Firebase Console currently has <strong>App Check Enforcement</strong> enabled on Vertex AI. On production (<code>studydesk.up.railway.app</code>), reCAPTCHA Enterprise passes automatically. In this preview iframe, Google blocks requests without an App Check token.
+                    </p>
+                    <p className="mt-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+                      To test in preview: register debug token <code className="bg-amber-200/50 dark:bg-amber-900/50 px-1 py-0.5 rounded font-mono">e6f3d4e1-8fe8-4e5d-87a3-f796f93db07f</code> in Firebase Console under App Check, or un-enforce Vertex AI in Firebase Console during testing.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : null}
           </section>

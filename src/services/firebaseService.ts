@@ -102,6 +102,28 @@ try {
   console.warn("App Check initialization warning:", e);
 }
 
+export function isAppCheckActive(): boolean {
+  return Boolean(appCheck);
+}
+
+export async function getAppCheckStatus(): Promise<'active' | 'in_cooldown' | 'bypassed' | 'missing'> {
+  if (isAppCheckInCooldown()) {
+    return 'in_cooldown';
+  }
+  if (!appCheck) {
+    return 'bypassed';
+  }
+  try {
+    const tokenRes = await getToken(appCheck, false);
+    if (tokenRes && tokenRes.token) {
+      return 'active';
+    }
+    return 'missing';
+  } catch {
+    return 'missing';
+  }
+}
+
 export async function checkAppCheckToken(): Promise<boolean> {
   if (isAppCheckInCooldown()) {
     return false;

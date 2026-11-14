@@ -27,7 +27,7 @@ export const MigrationPage: React.FC<MigrationPageProps> = ({ user, subjects, on
     try {
       const legacyApp = initializeApp({
         projectId: "ethereal-defender-11ttq",
-        apiKey: "AIzaSyCaQ5DbhNBbcngNE_jyqn2B8DJ_Soe6cG4",
+        apiKey: import.meta.env.VITE_LEGACY_FIREBASE_API_KEY,
         appId: "1:344665794118:web:7fd911ae9aa3e8962e8c47",
         authDomain: "ethereal-defender-11ttq.firebaseapp.com"
       }, 'legacy');

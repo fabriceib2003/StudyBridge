@@ -72,3 +72,15 @@ export async function deleteMaterialPagesLocal(materialId: string): Promise<void
     console.error('Failed to delete material pages from IndexedDB:', err);
   }
 }
+
+/**
+ * Clear all locally cached material pages from IndexedDB on confirmed online sign-out.
+ */
+export async function clearAllMaterialPagesLocal(): Promise<void> {
+  try {
+    const db = await getDB();
+    await db.clear('materialPages');
+  } catch (err) {
+    console.warn('Failed to clear local material pages IndexedDB:', err);
+  }
+}

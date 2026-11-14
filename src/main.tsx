@@ -9,9 +9,32 @@ import 'katex/dist/katex.min.css';
 if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch((err) => {
-        console.warn('SW registration failed:', err);
+      let hasActiveController = Boolean(navigator.serviceWorker.controller);
+      let refreshing = false;
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hasActiveController) {
+          hasActiveController = true;
+          return;
+        }
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
       });
+
+      navigator.serviceWorker
+        .register('/sw.js', { updateViaCache: 'none' })
+        .then((registration) => {
+          registration.update().catch(() => {});
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && navigator.onLine) {
+              registration.update().catch(() => {});
+            }
+          });
+        })
+        .catch((err) => {
+          console.warn('SW registration failed:', err);
+        });
     });
   } else {
     // In dev mode, unregister any stale workers that may have intercepted Vite dev server files

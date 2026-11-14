@@ -122,15 +122,20 @@ export async function loadMaterialContent(uid: string, materialId: string): Prom
   }
 }
 
-export const subscribeSubjects = (uid: string, callback: (subjects: Subject[], hasPendingWrites: boolean) => void) => {
+export const subscribeSubjects = (uid: string, callback: (subjects: Subject[], hasPendingWrites: boolean, pendingCount: number) => void) => {
   const q = query(collection(db, `users/${uid}/subjects`), orderBy("name", "asc"));
   return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
-    const subjects = snapshot.docs.map(doc => ({ 
-      id: doc.id, 
-      ...doc.data(),
-      hasPendingWrites: doc.metadata.hasPendingWrites || snapshot.metadata.hasPendingWrites 
-    } as Subject));
-    callback(subjects, snapshot.metadata.hasPendingWrites);
+    let docPendingCount = 0;
+    const subjects = snapshot.docs.map(doc => {
+      if (doc.metadata.hasPendingWrites) docPendingCount += 1;
+      return { 
+        id: doc.id, 
+        ...doc.data(),
+        hasPendingWrites: doc.metadata.hasPendingWrites || snapshot.metadata.hasPendingWrites 
+      } as Subject;
+    });
+    const pendingCount = docPendingCount > 0 ? docPendingCount : (snapshot.metadata.hasPendingWrites ? 1 : 0);
+    callback(subjects, snapshot.metadata.hasPendingWrites, pendingCount);
   });
 };
 
@@ -176,15 +181,20 @@ export const deleteSubjectWithOptions = async (
   await deleteSubjectFirestore(uid, subjectId);
 };
 
-export const subscribeMaterials = (uid: string, callback: (materials: Material[], hasPendingWrites: boolean) => void) => {
+export const subscribeMaterials = (uid: string, callback: (materials: Material[], hasPendingWrites: boolean, pendingCount: number) => void) => {
   const q = query(collection(db, `users/${uid}/materials`), orderBy("createdAt", "desc"));
   return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
-    const materials = snapshot.docs.map(doc => ({ 
-      id: doc.id, 
-      ...doc.data(),
-      hasPendingWrites: doc.metadata.hasPendingWrites || snapshot.metadata.hasPendingWrites
-    } as Material));
-    callback(materials, snapshot.metadata.hasPendingWrites);
+    let docPendingCount = 0;
+    const materials = snapshot.docs.map(doc => {
+      if (doc.metadata.hasPendingWrites) docPendingCount += 1;
+      return { 
+        id: doc.id, 
+        ...doc.data(),
+        hasPendingWrites: doc.metadata.hasPendingWrites || snapshot.metadata.hasPendingWrites
+      } as Material;
+    });
+    const pendingCount = docPendingCount > 0 ? docPendingCount : (snapshot.metadata.hasPendingWrites ? 1 : 0);
+    callback(materials, snapshot.metadata.hasPendingWrites, pendingCount);
   });
 };
 
@@ -217,15 +227,20 @@ export const deleteMaterialFirestore = async (uid: string, materialId: string) =
 };
 
 // Saved AI Results Collection (Summaries & Explanations)
-export const subscribeResults = (uid: string, callback: (results: any[], hasPendingWrites: boolean) => void) => {
+export const subscribeResults = (uid: string, callback: (results: any[], hasPendingWrites: boolean, pendingCount: number) => void) => {
   const q = query(collection(db, `users/${uid}/results`), orderBy("timestamp", "desc"));
   return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
-    const results = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      hasPendingWrites: doc.metadata.hasPendingWrites || snapshot.metadata.hasPendingWrites
-    }));
-    callback(results, snapshot.metadata.hasPendingWrites);
+    let docPendingCount = 0;
+    const results = snapshot.docs.map(doc => {
+      if (doc.metadata.hasPendingWrites) docPendingCount += 1;
+      return {
+        id: doc.id,
+        ...doc.data(),
+        hasPendingWrites: doc.metadata.hasPendingWrites || snapshot.metadata.hasPendingWrites
+      };
+    });
+    const pendingCount = docPendingCount > 0 ? docPendingCount : (snapshot.metadata.hasPendingWrites ? 1 : 0);
+    callback(results, snapshot.metadata.hasPendingWrites, pendingCount);
   });
 };
 
@@ -292,15 +307,20 @@ export const setCachedSection = async (uid: string, hash: string, summary: strin
   }
 };
 
-export const subscribeInteractions = (uid: string, callback: (interactions: AIInteraction[], hasPendingWrites: boolean) => void) => {
+export const subscribeInteractions = (uid: string, callback: (interactions: AIInteraction[], hasPendingWrites: boolean, pendingCount: number) => void) => {
   const q = query(collection(db, `users/${uid}/interactions`), orderBy("timestamp", "asc"));
   return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
-    const interactions = snapshot.docs.map(doc => ({ 
-      id: doc.id, 
-      ...doc.data(),
-      hasPendingWrites: doc.metadata.hasPendingWrites || snapshot.metadata.hasPendingWrites
-    } as AIInteraction));
-    callback(interactions, snapshot.metadata.hasPendingWrites);
+    let docPendingCount = 0;
+    const interactions = snapshot.docs.map(doc => {
+      if (doc.metadata.hasPendingWrites) docPendingCount += 1;
+      return { 
+        id: doc.id, 
+        ...doc.data(),
+        hasPendingWrites: doc.metadata.hasPendingWrites || snapshot.metadata.hasPendingWrites
+      } as AIInteraction;
+    });
+    const pendingCount = docPendingCount > 0 ? docPendingCount : (snapshot.metadata.hasPendingWrites ? 1 : 0);
+    callback(interactions, snapshot.metadata.hasPendingWrites, pendingCount);
   });
 };
 

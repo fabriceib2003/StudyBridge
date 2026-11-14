@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from './services/firebaseService';
+import { auth, clearFirestoreLocalCacheOnSignOut } from './services/firebaseService';
+import { clearAllMaterialPagesLocal } from './services/mediaStorage';
 import { 
   subscribeSubjects, 
   addSubjectFirestore, 
@@ -38,7 +39,8 @@ import { PrivacyPage } from './components/PrivacyPage';
 import { TermsPage } from './components/TermsPage';
 import { HomePage } from './components/HomePage';
 import { FAIL_OPEN, RESTRICTION_CODE, REGION_RESTRICTION_ENABLED } from './config/regionRestriction';
-import { Loader2 } from 'lucide-react';
+import { Loader2, WifiOff, AlertTriangle } from 'lucide-react';
+import { Modal } from './components/Modal';
 import { useTheme } from './contexts/ThemeContext';
 import 'katex/dist/katex.min.css';
 
@@ -48,6 +50,9 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const prefsLoadedForUidRef = React.useRef<string | null>(null);
+  const userRef = React.useRef<User | null>(null);
+  const explicitSignOutRef = React.useRef<boolean>(false);
+  const firestoreUnsubsRef = React.useRef<Array<() => void>>([]);
 
   // App state
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -55,10 +60,18 @@ export default function App() {
   const [interactions, setInteractions] = useState<AIInteraction[]>([]);
   const [savedResults, setSavedResults] = useState<SavedResult[]>([]);
   const [manualMode, setManualMode] = useState<RoutingMode>('auto');
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [hasPendingSync, setHasPendingSync] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [pendingWriteCount, setPendingWriteCount] = useState<number>(0);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+
+  // Sign-out warning modal state
+  const [isSignOutModalOpen, setIsSignOutModalOpen] = useState<boolean>(false);
+  const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
+  const [signOutOfflineAtPrompt, setSignOutOfflineAtPrompt] = useState<boolean>(false);
+  const [signOutPendingAtPrompt, setSignOutPendingAtPrompt] = useState<number>(0);
+
+  const hasPendingSync = !isOnline || pendingWriteCount > 0;
 
   // Preferences state
   const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md');
@@ -157,17 +170,28 @@ export default function App() {
     refreshDeviceAiCapability();
   }, []);
 
-  // Auth observer & cleanup
+  // Auth observer & cleanup (offline/network errors never sign the user out)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
       if (!currentUser) {
+        if (!explicitSignOutRef.current && userRef.current && typeof navigator !== 'undefined' && !navigator.onLine) {
+          // Treat offline/network token failure as still signed in
+          setAuthLoading(false);
+          return;
+        }
+        explicitSignOutRef.current = false;
+        userRef.current = null;
+        setUser(null);
         prefsLoadedForUidRef.current = null;
+        setPendingWriteCount(0);
         setSubjects([]);
         setMaterials([]);
         setInteractions([]);
         setSavedResults([]);
       } else {
+        explicitSignOutRef.current = false;
+        userRef.current = currentUser;
+        setUser(currentUser);
         try {
           const prefs = await getPreferences(currentUser.uid);
           if (prefs) {
@@ -190,60 +214,69 @@ export default function App() {
     return () => unsubscribe();
   }, [syncThemeFromPreferences]);
 
-  // Real-time Firestore sync with metadata.hasPendingWrites tracking
+  // Real-time Firestore sync with metadata.hasPendingWrites count tracking
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) {
+      firestoreUnsubsRef.current = [];
+      setPendingWriteCount(0);
+      return;
+    }
 
-    let subPending = false;
-    let matPending = false;
-    let resPending = false;
-    let intPending = false;
+    let subPendingCount = 0;
+    let matPendingCount = 0;
+    let resPendingCount = 0;
+    let intPendingCount = 0;
 
     const updateGlobalSync = () => {
-      setHasPendingSync(!isOnline || subPending || matPending || resPending || intPending);
+      setPendingWriteCount(subPendingCount + matPendingCount + resPendingCount + intPendingCount);
     };
 
-    const unsubSubjects = subscribeSubjects(user.uid, (list, pending) => {
+    const unsubSubjects = subscribeSubjects(user.uid, (list, _pending, pendingCount) => {
       setSubjects(list);
-      subPending = pending;
+      subPendingCount = pendingCount;
       updateGlobalSync();
     });
 
-    const unsubMaterials = subscribeMaterials(user.uid, (list, pending) => {
+    const unsubMaterials = subscribeMaterials(user.uid, (list, _pending, pendingCount) => {
       setMaterials(list);
-      matPending = pending;
+      matPendingCount = pendingCount;
       updateGlobalSync();
     });
 
-    const unsubResults = subscribeResults(user.uid, (list, pending) => {
+    const unsubResults = subscribeResults(user.uid, (list, _pending, pendingCount) => {
       setSavedResults(list);
-      resPending = pending;
+      resPendingCount = pendingCount;
       updateGlobalSync();
     });
 
-    const unsubInteractions = subscribeInteractions(user.uid, (list, pending) => {
+    const unsubInteractions = subscribeInteractions(user.uid, (list, _pending, pendingCount) => {
       setInteractions(list);
-      intPending = pending;
+      intPendingCount = pendingCount;
       updateGlobalSync();
     });
+
+    const unsubs = [unsubSubjects, unsubMaterials, unsubResults, unsubInteractions].filter(Boolean);
+    firestoreUnsubsRef.current = unsubs;
 
     return () => {
-      if (unsubSubjects) unsubSubjects();
-      if (unsubMaterials) unsubMaterials();
-      if (unsubResults) unsubResults();
-      if (unsubInteractions) unsubInteractions();
+      unsubs.forEach((unsub) => {
+        try {
+          unsub();
+        } catch {
+          // ignore unsubscribe error
+        }
+      });
+      firestoreUnsubsRef.current = [];
     };
-  }, [user, isOnline]);
+  }, [user?.uid]);
 
   // Sync online/offline status
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      setHasPendingSync(false);
     };
     const handleOffline = () => {
       setIsOnline(false);
-      setHasPendingSync(true);
     };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -348,8 +381,101 @@ export default function App() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut(auth);
+  const clearUserAppCaches = async () => {
+    await clearAllMaterialPagesLocal();
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const keysToRemove: string[] = [
+          'studybridge_subjects_v2',
+          'studybridge_materials_v2',
+          'studybridge_interactions_v2',
+          'studybridge_manual_route_v2',
+          'studybridge_study_language',
+          'studybridge_drive_connected'
+        ];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith('result_') || k.startsWith('result_cache_'))) {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+      }
+      if (typeof sessionStorage !== 'undefined') {
+        const sessionKeysToRemove: string[] = [
+          'studybridge_instruction',
+          'studybridge_toast',
+          'google_drive_token',
+          'studybridge_region_prompted'
+        ];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const k = sessionStorage.key(i);
+          if (
+            k &&
+            (k.startsWith('studybridge_selected_mats_') ||
+              k.startsWith('result_') ||
+              k.startsWith('result_cache_'))
+          ) {
+            sessionKeysToRemove.push(k);
+          }
+        }
+        sessionKeysToRemove.forEach((k) => sessionStorage.removeItem(k));
+      }
+    } catch (e) {
+      console.warn('Could not clear local app storage caches:', e);
+    }
+  };
+
+  const executeSignOut = async (shouldCleanCaches: boolean) => {
+    setIsSigningOut(true);
+    explicitSignOutRef.current = true;
+    prefsLoadedForUidRef.current = null;
+    try {
+      if (shouldCleanCaches) {
+        // Unsubscribe active listeners before terminating Firestore
+        firestoreUnsubsRef.current.forEach((unsub) => {
+          try {
+            unsub();
+          } catch {
+            // ignore
+          }
+        });
+        firestoreUnsubsRef.current = [];
+        setSubjects([]);
+        setMaterials([]);
+        setInteractions([]);
+        setSavedResults([]);
+        setSelectedMaterial(null);
+        setPendingWriteCount(0);
+
+        await signOut(auth);
+        await clearFirestoreLocalCacheOnSignOut();
+        await clearUserAppCaches();
+      } else {
+        // Offline or unsynced items: skip cleanup and preserve local cache
+        await signOut(auth);
+      }
+    } finally {
+      setIsSigningOut(false);
+      setIsSignOutModalOpen(false);
+    }
+  };
+
+  const handleRequestSignOut = async () => {
+    const currentlyOffline = (typeof navigator !== 'undefined' && !navigator.onLine) || !isOnline;
+    if (currentlyOffline || pendingWriteCount > 0) {
+      setSignOutOfflineAtPrompt(currentlyOffline);
+      setSignOutPendingAtPrompt(pendingWriteCount);
+      setIsSignOutModalOpen(true);
+      return;
+    }
+    await executeSignOut(true);
+  };
+
+  const handleConfirmSignOut = async () => {
+    const currentlyOffline = (typeof navigator !== 'undefined' && !navigator.onLine) || !isOnline;
+    const shouldCleanCaches = !currentlyOffline && pendingWriteCount === 0;
+    await executeSignOut(shouldCleanCaches);
   };
 
   // Compute stats strictly from logged-in user's interactions
@@ -388,8 +514,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage user={user} theme={theme} setTheme={setTheme} />} />
-        <Route path="/login" element={<AuthScreen darkMode={isDark} />} />
+        <Route path="/" element={!isOnline && user ? <Navigate to="/study" replace /> : <HomePage user={user} theme={theme} setTheme={setTheme} />} />
+        <Route path="/login" element={!isOnline && user ? <Navigate to="/study" replace /> : <AuthScreen darkMode={isDark} />} />
         <Route path="/about" element={<AboutPage theme={theme} setTheme={setTheme} />} />
         <Route path="/privacy" element={<PrivacyPage theme={theme} setTheme={setTheme} />} />
         <Route path="/terms" element={<TermsPage theme={theme} setTheme={setTheme} />} />
@@ -404,13 +530,66 @@ export default function App() {
                 isLoading={isCheckingRegion}
               />
 
+              <Modal
+                isOpen={isSignOutModalOpen}
+                onClose={() => !isSigningOut && setIsSignOutModalOpen(false)}
+                title="Sign out?"
+                icon={<AlertTriangle className="w-5 h-5 text-[var(--warning)]" />}
+                isConfirmation
+                maxWidth="confirmation"
+                isDestructiveActionRunning={isSigningOut}
+                footer={
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsSignOutModalOpen(false)}
+                      disabled={isSigningOut}
+                      className="bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] text-[var(--text-secondary)] border border-[var(--border)] transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmSignOut}
+                      disabled={isSigningOut}
+                      className="bg-[var(--danger-solid)] hover:bg-[var(--danger-solid-hover)] text-[var(--primary-text)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isSigningOut && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Sign out anyway
+                    </button>
+                  </>
+                }
+              >
+                <div className="space-y-2.5 text-sm leading-relaxed">
+                  {signOutOfflineAtPrompt && (
+                    <p className="text-[var(--text)]">
+                      You&apos;re offline. If you sign out you can&apos;t sign back in until you&apos;re online.
+                    </p>
+                  )}
+                  {signOutPendingAtPrompt > 0 && (
+                    <p className="text-[var(--warning)] font-medium">
+                      {signOutPendingAtPrompt} {signOutPendingAtPrompt === 1 ? "item hasn't" : "items haven't"} synced yet.
+                    </p>
+                  )}
+                </div>
+              </Modal>
+
               <Navbar
                 user={user}
                 manualMode={manualMode}
                 setManualMode={setManualMode}
-                onSignOut={handleSignOut}
+                onSignOut={handleRequestSignOut}
                 hasPendingSync={hasPendingSync}
               />
+
+              {!isOnline && (
+                <div className="bg-[var(--warning-bg)] border-b border-[var(--warning-border)] text-[var(--warning)] px-4 py-2 text-xs font-medium">
+                  <div className="max-w-[960px] mx-auto flex items-center gap-2">
+                    <WifiOff className="w-3.5 h-3.5 shrink-0" />
+                    <span>Offline mode: your saved material is available. New AI tasks need the cloud unless on-device AI is available.</span>
+                  </div>
+                </div>
+              )}
 
               <main className="flex-1 pb-20 md:pb-12">
                 <Routes>
@@ -494,7 +673,7 @@ export default function App() {
                       onClearHistory={handleClearHistory}
                       onExportData={handleExportData}
                       onDeleteAllData={handleDeleteAllData}
-                      onSignOut={handleSignOut}
+                      onSignOut={handleRequestSignOut}
                       isDeviceAiAvailable={isDeviceAiAvailable}
                       deviceAiDetails={deviceAiDetails}
                       deviceAiStatus={deviceAiStatus}

@@ -1,6 +1,12 @@
 import { initializeApp, getApps } from "firebase/app";
 import { 
+  Auth,
   getAuth, 
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  setPersistence,
+  browserPopupRedirectResolver,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -12,9 +18,12 @@ import {
   User
 } from "firebase/auth";
 import { 
+  Firestore,
   initializeFirestore,
   persistentLocalCache, 
-  persistentMultipleTabManager 
+  persistentMultipleTabManager,
+  terminate,
+  clearIndexedDbPersistence
 } from "firebase/firestore";
 import { getAI, GoogleAIBackend } from "firebase/ai";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "firebase/app-check";
@@ -23,7 +32,7 @@ import { getRemoteConfig, fetchAndActivate, getValue, RemoteConfig } from "fireb
 export const firebaseConfig = {
   projectId: "centered-rope-494521-g9",
   appId: "1:543098383526:web:062de0805765e368f2d867",
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyB3YW5iqPobvPdGOXoGyRzIXQI-xfjNhlc",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "centered-rope-494521-g9.firebaseapp.com"
 };
 
@@ -182,14 +191,54 @@ try {
   console.warn("App Check initialization warning:", e);
 }
 
-export const auth = getAuth(app);
+let authInstance: Auth;
+try {
+  authInstance = initializeAuth(app, {
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+    popupRedirectResolver: browserPopupRedirectResolver
+  });
+} catch {
+  authInstance = getAuth(app);
+  setPersistence(authInstance, indexedDBLocalPersistence)
+    .catch(() => setPersistence(authInstance, browserLocalPersistence))
+    .catch((err) => console.warn("Auth persistence setup warning:", err));
+}
+
+export const auth = authInstance;
+
+function createFirestoreInstance(): Firestore {
+  return initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+}
 
 // Initialize Firestore with offline persistence
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
+export let db: Firestore = createFirestoreInstance();
+
+/**
+ * Terminates Firestore and wipes its IndexedDB persistence cache on confirmed
+ * online sign-out, then re-initializes a clean Firestore instance for future logins.
+ */
+export async function clearFirestoreLocalCacheOnSignOut(): Promise<void> {
+  const currentDb = db;
+  try {
+    await terminate(currentDb);
+  } catch (err) {
+    console.warn("Firestore terminate warning:", err);
+  }
+  try {
+    await clearIndexedDbPersistence(currentDb);
+  } catch (err) {
+    console.warn("Firestore clearIndexedDbPersistence warning:", err);
+  }
+  try {
+    db = createFirestoreInstance();
+  } catch (err) {
+    console.warn("Firestore re-initialize warning:", err);
+  }
+}
 
 export const googleProvider = new GoogleAuthProvider();
 
@@ -325,4 +374,9 @@ export function getRemoteConfigValue(key: string, defaultValue: any): any {
 }
 
 // Initialize Firebase AI Logic with Gemini Developer API backend
-export const ai = app ? getAI(app, { backend: new GoogleAIBackend() }) : null;
+export const ai = app
+  ? getAI(app, {
+      backend: new GoogleAIBackend(),
+      useLimitedUseAppCheckTokens: true
+    })
+  : null;

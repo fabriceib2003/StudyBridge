@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Brain, 
@@ -9,7 +9,8 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Loader2,
-  Sparkles
+  Sparkles,
+  WifiOff
 } from 'lucide-react';
 import { 
   signInWithEmailAndPassword, 
@@ -34,6 +35,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const formatAuthError = (err: any): string => {
     const code = err?.code || '';
@@ -47,6 +60,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline) return;
     setLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -77,6 +91,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!isOnline) return;
     setLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -110,6 +125,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
             Offline-first AI study assistant with Firebase AI Logic hybrid inference
           </p>
         </div>
+
+        {/* Offline Banner */}
+        {!isOnline && (
+          <div className="bg-[var(--warning-bg)] border border-[var(--warning-border)] rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-[var(--warning)]">
+            <WifiOff className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="leading-relaxed">You&apos;re offline. Sign in needs an internet connection.</span>
+          </div>
+        )}
 
         {/* Error / Success Banners */}
         {errorMessage && (
@@ -194,8 +217,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-medium text-xs shadow-lg transition-all disabled:opacity-50"
+            disabled={loading || !isOnline}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-medium text-xs shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -219,8 +242,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ darkMode }) => {
 
             <button
               onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text-secondary)] transition-all disabled:opacity-50"
+              disabled={loading || !isOnline}
+              className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text-secondary)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

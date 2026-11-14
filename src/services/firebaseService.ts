@@ -77,18 +77,26 @@ export function markAppCheckFailure(): void {
 let appCheck: any = null;
 try {
   if (typeof window !== 'undefined' && app) {
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const isDebugMode = isLocalhost || import.meta.env.VITE_APPCHECK_DEBUG === 'true' || window.location.hostname.includes('run.app');
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isPreview = hostname.includes('run.app');
+    const isDebugMode = isLocalhost || import.meta.env.VITE_APPCHECK_DEBUG === 'true';
 
+    // Keep debug-token behavior on localhost or when VITE_APPCHECK_DEBUG is "true"
     if (isDebugMode && typeof self !== 'undefined') {
       (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
     }
 
-    const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6Lc-Dh8uAAAAAC8aF0lQhxsJph6qF8dO6FJfu_BK";
-    appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaEnterpriseProvider(siteKey),
-      isTokenAutoRefreshEnabled: true
-    });
+    // Initialize App Check on production (e.g. studydesk.up.railway.app) or when debug is requested/localhost.
+    // In preview (run.app), bypass unless VITE_APPCHECK_DEBUG="true" to prevent 403 errors from unregistered tokens.
+    const shouldInitialize = !isPreview || isDebugMode;
+    if (shouldInitialize) {
+      const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6Lc-Dh8uAAAAAC8aF0lQhxsJph6qF8dO6FJfu_BK";
+      appCheck = initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider(siteKey),
+        isTokenAutoRefreshEnabled: true
+      });
+    }
   }
 } catch (e) {
   console.warn("App Check initialization warning:", e);

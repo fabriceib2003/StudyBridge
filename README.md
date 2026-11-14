@@ -150,14 +150,31 @@ Chrome's on-device model needs capable hardware and a one-time download of sever
 
 ---
 
-## How This Maps to the Judging Criteria
+## Environment Variables
 
-| Criterion | Where to look |
-|---|---|
-| **Technological implementation** | Browser-side `getGenerativeModel` with all four `InferenceMode` values, streaming, Remote Config thresholds, App Check, Firestore offline persistence, honest source reporting, Readiness panel (`/about`, owner only) |
-| **Design** | Complete product: accounts, subjects, import, saved library, quiz and flashcard viewers, themes, responsive layout, installable PWA |
-| **Potential impact** | Students on slow or costly internet: offline study, private on-device mode, lower data use |
-| **Quality of the idea** | The router decides what needs the cloud and shows its reasoning, instead of treating on-device AI as a hidden fallback |
+Copy `.env.example` to `.env` for local development. On a host such as Railway, set the same names in the service's Variables panel and redeploy, because Vite reads `VITE_` values at build time. Never commit `.env`.
+
+| Variable | Where it runs | Required | Purpose |
+|---|---|---|---|
+| `VITE_FIREBASE_API_KEY` | Browser (public) | Yes | Firebase web API key, used for Auth, Firestore and AI Logic |
+| `VITE_RECAPTCHA_SITE_KEY` | Browser (public) | Yes, production | reCAPTCHA Enterprise site key registered in Firebase App Check |
+| `VITE_APPCHECK_DEBUG` | Browser | No | Set `true` only for local development to print an App Check debug token. Keep `false` in production |
+| `VITE_GOOGLE_API_KEY` | Browser (public) | Only for Drive import | Google API key restricted to the Picker and Drive APIs |
+| `VITE_GOOGLE_CLIENT_ID` | Browser (public) | Only for Drive import | OAuth web client ID |
+| `VITE_GOOGLE_PROJECT_NUMBER` | Browser (public) | Only for Drive import | Google Cloud project number used by the Picker |
+| `FIREBASE_SERVICE_ACCOUNT` | Server only (secret) | Only for YouTube captions | Service account JSON string used by `server.ts` to verify user tokens |
+
+Do not add a `VITE_` prefix to any secret. No Gemini API key is needed, because AI runs through Firebase AI Logic.
+
+### Values set in code
+The Firebase `projectId`, `appId` and `authDomain` are in `src/services/firebaseService.ts`. If you fork the project, replace them with your own Firebase web app's config.
+
+### Console setup the variables depend on
+- **AI Logic:** enabled with the Gemini Developer API.
+- **App Check:** your web app registered with a reCAPTCHA Enterprise key that lists your domain and `localhost`.
+- **Authentication:** Email/Password enabled and your domain under Authorized domains.
+- **Firestore:** `(default)` database with `firestore.rules` published.
+- **Remote Config:** parameters for the router thresholds (optional, in-code defaults exist).
 
 ---
 

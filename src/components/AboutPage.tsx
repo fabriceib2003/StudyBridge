@@ -78,11 +78,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme: propTheme, setTheme
       }
     } catch (e: any) {
       const errMsg = (e?.message || String(e)).toLowerCase();
-      if (errMsg.includes('appcheck') || errMsg.includes('app check') || errMsg.includes('recaptcha')) {
+      if (errMsg.includes('appcheck') || errMsg.includes('app check') || errMsg.includes('recaptcha') || errMsg.includes('403') || errMsg.includes('401')) {
         markAppCheckFailure();
-        aiTestResult = "App Check token required / rejected";
+        aiTestResult = "Blocked by App Check enforcement";
       } else {
-        aiTestResult = `Error: ${e.message || 'Call failed'}`;
+        const cleanErr = e?.message ? e.message.split('(')[0].trim() : 'Call failed';
+        aiTestResult = cleanErr.length > 35 ? cleanErr.slice(0, 32) + '...' : cleanErr;
       }
       aiSourceUsed = "None (Call Failed)";
       aiTestSuccess = false;

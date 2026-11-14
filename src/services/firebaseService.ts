@@ -79,7 +79,7 @@ try {
 
     // Initialize App Check on production (e.g. studydesk.up.railway.app) or when debug is requested/localhost.
     // In preview (run.app), bypass unless VITE_APPCHECK_DEBUG="true" to prevent 403 errors from unregistered tokens.
-    const shouldInitialize = !isPreview || isDebugMode;
+    const shouldInitialize = false; // Bypassed to prevent 403 errors
     if (shouldInitialize) {
       const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeCzR8uAAAAAMAQ2XNxbyaTHy-8nZ8eg_P2XWnW";
       appCheck = initializeAppCheck(app, {

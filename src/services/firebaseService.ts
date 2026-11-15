@@ -350,6 +350,7 @@ export let remoteConfig: RemoteConfig | null = null;
 try {
   remoteConfig = getRemoteConfig(app);
   remoteConfig.settings.minimumFetchIntervalMillis = import.meta.env.PROD ? 3600000 : 0; // 1 hour in production, 0 in dev
+  remoteConfig.settings.fetchTimeoutMillis = 10000; // 10 seconds timeout
   remoteConfig.defaultConfig = {
     short_text_limit: 800,
     long_document_limit: 4000,

@@ -304,6 +304,9 @@ export function cleanAndParseJSON(rawText: string): any {
   } catch {}
 
   // 3. Regex fallback extraction for cards or questions
+  const titleMatch = cleaned.match(/"title"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  const parsedTitle = titleMatch ? titleMatch[1].replace(/\\n/g, ' ').replace(/\\"/g, '"') : undefined;
+
   const cards: { front: string; back: string; topic?: string }[] = [];
   const cardRegex = /"front"\s*:\s*"((?:[^"\\]|\\.)*)"[\s\S]*?"back"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
   let cardMatch;
@@ -313,7 +316,7 @@ export function cleanAndParseJSON(rawText: string): any {
     cards.push({ front, back });
   }
   if (cards.length > 0) {
-    return { cards };
+    return { title: parsedTitle, cards };
   }
 
   const questions: any[] = [];
@@ -335,7 +338,7 @@ export function cleanAndParseJSON(rawText: string): any {
     }
   }
   if (questions.length > 0) {
-    return { questions };
+    return { title: parsedTitle, questions };
   }
 
   throw new Error("Failed to parse structured AI output. Please click Retry.");
@@ -438,6 +441,7 @@ STRICT INSTRUCTIONS:
 1. Generate exactly 5 challenging, high-quality multiple-choice questions.
 2. Return ONLY valid JSON matching this exact structure with no markdown code block formatting or extra text:
 {
+  "title": "Main topic name (e.g. Phase relationships and soil classification)",
   "questions": [
     {
       "question": "Question text here",
@@ -461,6 +465,7 @@ STRICT INSTRUCTIONS:
 1. Generate between 8 and 12 high-yield flashcards covering key terms, definitions, formulas, and concepts.
 2. Return ONLY valid JSON matching this exact structure with no markdown code block formatting or extra text:
 {
+  "title": "Main topic name (e.g. Phase relationships and soil classification)",
   "cards": [
     {
       "front": "Question or term",
@@ -768,14 +773,8 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
 
   if (options.actionType === 'quiz') {
     quizData = cleanAndParseJSON(fullText);
-    const count = quizData?.questions?.length || 0;
-    const topics = Array.from(new Set((quizData?.questions || []).map((q: any) => q.topic).filter(Boolean))).slice(0, 4).join(', ');
-    fullText = `Generated ${count}-question practice quiz${topics ? ` covering ${topics}` : ''} for ${options.subjectName}. Click below to launch the Quiz Arena!`;
   } else if (options.actionType === 'flashcards') {
     flashcardData = cleanAndParseJSON(fullText);
-    const count = flashcardData?.cards?.length || 0;
-    const topics = Array.from(new Set((flashcardData?.cards || []).map((c: any) => c.topic).filter(Boolean))).slice(0, 4).join(', ');
-    fullText = `Generated ${count} interactive flashcards${topics ? ` covering ${topics}` : ''} for ${options.subjectName}. Click below to open the Flashcard Viewer!`;
   }
 
   return {

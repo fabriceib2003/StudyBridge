@@ -27,6 +27,7 @@ import { MarkdownViewer } from './MarkdownViewer';
 import { QuizArena } from './QuizArena';
 import { FlashcardViewer } from './FlashcardViewer';
 import { Modal } from './Modal';
+import { getDisplayTitle } from '../utils/resultUtils';
 
 interface ResultPageProps {
   subjects: Subject[];
@@ -902,7 +903,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text)]">
-          {result.title || 'Untitled Result'}
+          {getDisplayTitle(result, [], subject?.name)}
         </h1>
 
         <div className="flex items-center gap-4 text-xs text-[var(--muted)] pt-1 border-t border-[var(--border-subtle)] flex-wrap">
@@ -954,7 +955,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
           <div className="space-y-1">
             <h3 className="text-base font-bold text-[var(--text)]">Flashcard Deck</h3>
             <p className="text-xs text-[var(--muted)] max-w-sm mx-auto">
-              Ready to study? Click below to generate or load the interactive flashcards.
+              Interactive flashcards are ready to open or regenerate.
             </p>
           </div>
           <button
@@ -975,7 +976,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
           <div className="space-y-1">
             <h3 className="text-base font-bold text-[var(--text)]">Quiz Arena</h3>
             <p className="text-xs text-[var(--muted)] max-w-sm mx-auto">
-              Ready for practice? Click below to generate or load the interactive questions.
+              Practice questions are ready to open or regenerate.
             </p>
           </div>
           <button

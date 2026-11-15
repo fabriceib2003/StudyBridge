@@ -4,6 +4,7 @@ import { FileText, Search, Trash2, BookOpen, RefreshCw, Copy, Check } from 'luci
 import { SavedResult, Subject, Material } from '../types';
 import { deleteResultFirestore } from '../services/firestoreService';
 import { auth } from '../services/firebaseService';
+import { computeTitle, computePreview, getDisplayTitle } from '../utils/resultUtils';
 
 interface LibraryPageProps {
   subjects: Subject[];
@@ -26,7 +27,10 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({ subjects, materials, s
       ? isSum 
       : isExp;
     const matchesSubject = filterSubject === 'all' || r.subjectId === filterSubject;
-    const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const titleVal = getDisplayTitle(r, savedResults);
+    const previewVal = computePreview(r);
+    const matchesSearch = titleVal.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          previewVal.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           r.content.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesSubject && matchesSearch;
   });
@@ -58,18 +62,22 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({ subjects, materials, s
 
       {/* List */}
       <div className="space-y-3">
-        {filteredResults.map(r => (
-          <div key={r.id} className="bg-[var(--surface)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <h4 className="text-sm font-semibold text-[var(--text)] truncate">{r.title}</h4>
-              <p className="text-xs text-[var(--muted)] truncate">{r.content.substring(0, 100)}</p>
+        {filteredResults.map(r => {
+          const displayTitle = getDisplayTitle(r, savedResults);
+          const displayPreview = computePreview(r);
+          return (
+            <div key={r.id} className="bg-[var(--surface)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <h4 className="text-sm font-semibold text-[var(--text)] truncate">{displayTitle}</h4>
+                <p className="text-xs text-[var(--muted)] line-clamp-2">{displayPreview}</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => navigate(`/results/${r.id}`)} className="text-[var(--primary-accent)] text-xs font-medium">Open</button>
+                <button onClick={() => handleDelete(r.id)} className="text-[var(--danger)] text-xs font-medium">Delete</button>
+              </div>
             </div>
-            <div className="flex gap-2 shrink-0">
-              <button onClick={() => navigate(`/results/${r.id}`)} className="text-[var(--primary-accent)] text-xs font-medium">Open</button>
-              <button onClick={() => handleDelete(r.id)} className="text-[var(--danger)] text-xs font-medium">Delete</button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

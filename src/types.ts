@@ -41,6 +41,7 @@ export type SavedResult = {
   id: string;
   subjectId: string;
   title: string;
+  preview?: string;
   type: 'summarize' | 'summary' | 'explain' | 'explanation' | 'quiz' | 'flashcards' | 'answer';
   content: string;
   prompt?: string;
@@ -55,6 +56,7 @@ export type SavedResult = {
   level?: 'Beginner' | 'Student' | 'Advanced';
   focus?: string;
   quizData?: {
+    title?: string;
     questions: {
       question: string;
       options: string[];
@@ -65,6 +67,7 @@ export type SavedResult = {
     }[];
   };
   flashcardData?: {
+    title?: string;
     cards: {
       front: string;
       back: string;

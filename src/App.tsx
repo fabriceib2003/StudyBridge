@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth, clearFirestoreLocalCacheOnSignOut } from './services/firebaseService';
+import { auth, db, clearFirestoreLocalCacheOnSignOut } from './services/firebaseService';
+import { doc, getDoc } from 'firebase/firestore';
 import { clearAllMaterialPagesLocal } from './services/mediaStorage';
 import { 
   subscribeSubjects, 
@@ -29,7 +30,6 @@ import { ProfilePage } from './components/ProfilePage';
 import { SettingsPage } from './components/SettingsPage';
 import { ResultPage } from './components/ResultPage';
 import { AuthScreen } from './components/AuthScreen';
-import { MigrationPage } from './components/MigrationPage';
 import { checkOnDeviceAIAvailability } from './services/aiService';
 import { performRegionCheck, isGeolocationAvailable, RegionState } from './services/regionService';
 import { BlockedRegionScreen } from './components/BlockedRegionScreen';
@@ -38,7 +38,7 @@ import { AboutPage } from './components/AboutPage';
 import { PrivacyPage } from './components/PrivacyPage';
 import { TermsPage } from './components/TermsPage';
 import { HomePage } from './components/HomePage';
-import { FAIL_OPEN, RESTRICTION_CODE, REGION_RESTRICTION_ENABLED } from './config/regionRestriction';
+import { FAIL_OPEN, RESTRICTION_CODE } from './config/regionRestriction';
 import { Loader2, WifiOff, AlertTriangle } from 'lucide-react';
 import { Modal } from './components/Modal';
 import { useTheme } from './contexts/ThemeContext';
@@ -47,6 +47,23 @@ import 'katex/dist/katex.min.css';
 
 export default function App() {
   const { theme, isDark, setTheme, syncThemeFromPreferences, registerFirestoreSaver } = useTheme();
+
+  if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text)] flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-[var(--surface)] border border-[var(--danger-border)] rounded-3xl p-8 shadow-2xl space-y-4 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-[var(--danger-bg)] text-[var(--danger)] flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <h1 className="text-xl font-bold text-[var(--text)]">Configuration Error</h1>
+          <p className="text-xs text-[var(--muted)] leading-relaxed">
+            <code>VITE_FIREBASE_API_KEY</code> is missing from environment variables. Please add <code>VITE_FIREBASE_API_KEY</code> to your <code>.env</code> file or host environment variables and restart.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const prefsLoadedForUidRef = React.useRef<string | null>(null);
@@ -86,10 +103,31 @@ export default function App() {
   const [deviceAiDetails, setDeviceAiDetails] = useState<string>('');
   const [browserName, setBrowserName] = useState<string>('');
 
-  // Regional restriction state
+  // Regional restriction state & Firestore switch
   const [regionState, setRegionState] = useState<RegionState | null>(null);
   const [showRegionPrompt, setShowRegionPrompt] = useState<boolean>(false);
   const [isCheckingRegion, setIsCheckingRegion] = useState<boolean>(false);
+  const [regionRestrictionEnabled, setRegionRestrictionEnabled] = useState<boolean>(false);
+  const OWNER_EMAILS = ['fabriceib2003@gmail.com'];
+  const isOwner = user?.email && OWNER_EMAILS.includes(user.email);
+
+  useEffect(() => {
+    if (!user) {
+      setRegionRestrictionEnabled(false);
+      return;
+    }
+    getDoc(doc(db, 'appConfig/regionRestriction'))
+      .then((snap) => {
+        if (snap.exists()) {
+          setRegionRestrictionEnabled(Boolean(snap.data()?.enabled));
+        } else {
+          setRegionRestrictionEnabled(false);
+        }
+      })
+      .catch(() => {
+        setRegionRestrictionEnabled(false);
+      });
+  }, [user]);
 
   const handleTriggerRegionCheck = async (): Promise<void> => {
     if (!user) return;
@@ -108,9 +146,13 @@ export default function App() {
     await handleTriggerRegionCheck();
   };
 
-  // Region check on login & app load, and every 30 minutes while open
+  // Region check on login & app load, and every 30 minutes while open (owner accounts never restricted)
   useEffect(() => {
-    if (!REGION_RESTRICTION_ENABLED) return;
+    if (!regionRestrictionEnabled || isOwner) {
+      setRegionState(null);
+      setShowRegionPrompt(false);
+      return;
+    }
     if (!user) {
       setRegionState(null);
       setShowRegionPrompt(false);
@@ -136,7 +178,7 @@ export default function App() {
     }, 30 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, regionRestrictionEnabled, isOwner]);
 
   // Register Firestore theme saver for logged-in user
   useEffect(() => {
@@ -680,9 +722,6 @@ export default function App() {
                       browserName={browserName}
                       onRefreshDeviceAi={refreshDeviceAiCapability}
                     />
-                  } />
-                  <Route path="migrate" element={
-                    <MigrationPage user={user} subjects={subjects} onAddMaterial={handleAddMaterial} />
                   } />
                   <Route path="*" element={<Navigate to="/study" replace />} />
                 </Routes>

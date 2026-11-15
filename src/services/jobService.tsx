@@ -4,6 +4,7 @@ import { auth, db } from './firebaseService';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
 import { executeAIRequest, getRouteLabel } from './aiService';
 import { loadMaterialContent, addResultFirestore } from './firestoreService';
+import { computeTitle, computePreview } from '../utils/resultUtils';
 
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled' | 'interrupted';
 
@@ -225,11 +226,15 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       job.progressText = 'Saving result...';
       setJobs(prev => prev.map(j => j.id === job.id ? { ...job } : j));
 
-      // Save result in Firestore
-      const resultType = job.type === 'summary' ? 'summary' : 'explanation';
+      // Save result in Firestore with real title and preview
+      const resultType = job.type === 'summary' ? 'summary' : job.type === 'quiz' ? 'quiz' : job.type === 'flashcards' ? 'flashcards' : 'explanation';
+      const realTitle = computeTitle(resultType, aiResult.response, aiResult.quizData, aiResult.flashcardData, job.title || 'Study Material');
+      const preview = computePreview({ type: resultType, content: aiResult.response, quizData: aiResult.quizData, flashcardData: aiResult.flashcardData });
+
       const resultId = await addResultFirestore(user.uid, {
         subjectId: job.subjectId,
-        title: job.title,
+        title: realTitle,
+        preview,
         type: resultType,
         content: aiResult.response,
         prompt: combinedText,
@@ -241,7 +246,9 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ttftMs: aiResult.ttftMs,
         timestamp: Date.now(),
         level: job.explainLevel,
-        focus: job.explainFocus
+        focus: job.explainFocus,
+        ...(aiResult.quizData ? { quizData: aiResult.quizData } : {}),
+        ...(aiResult.flashcardData ? { flashcardData: aiResult.flashcardData } : {})
       });
 
       job.status = 'done';

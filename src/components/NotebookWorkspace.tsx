@@ -46,6 +46,7 @@ import { FlashcardViewer } from './FlashcardViewer';
 import { ManageSubjectsModal } from './ManageSubjectsModal';
 import { extractText, transcribeAudio } from '../services/materialExtractor';
 import { Modal } from './Modal';
+import { computeTitle, computePreview, getDisplayTitle } from '../utils/resultUtils';
 
 interface NotebookWorkspaceProps {
   subjects: Subject[];
@@ -243,12 +244,9 @@ export const NotebookWorkspace: React.FC<NotebookWorkspaceProps> = ({
     }
 
     const promptText = customPrompt || chatPrompt;
-    let title = '';
-    if (type === 'summary') title = `Summary (${activeSubject?.name || 'Subject'})`;
-    else if (type === 'explanation') title = `Explanation: ${explainFocus || 'Core Concepts'}`;
-    else if (type === 'quiz') title = `Practice Quiz (${activeSubject?.name || 'Subject'})`;
-    else if (type === 'flashcards') title = `Flashcards (${activeSubject?.name || 'Subject'})`;
-    else title = `Ask: "${promptText.substring(0, 30)}..."`;
+    const firstTickedMat = materials.find(m => selectedMaterialIds.includes(m.id));
+    const srcName = explainFocus || (type === 'ask' ? promptText : firstTickedMat?.title || activeSubject?.name || 'Study Material');
+    const title = computeTitle(type === 'ask' ? 'answer' : type, promptText, undefined, undefined, srcName, savedResults);
 
     try {
       await startJob({
@@ -593,7 +591,7 @@ export const NotebookWorkspace: React.FC<NotebookWorkspaceProps> = ({
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-[var(--primary-accent)]" />
               <h3 className="text-sm font-bold text-[var(--text)]">
-                {activeCenterView === 'chat' ? `Notebook Workspace (${activeSubject?.name || 'Subject'})` : viewingResult?.title}
+                {activeCenterView === 'chat' ? `Notebook Workspace (${activeSubject?.name || 'Subject'})` : (viewingResult ? getDisplayTitle(viewingResult, savedResults, activeSubject?.name) : '')}
               </h3>
             </div>
 
@@ -908,20 +906,28 @@ export const NotebookWorkspace: React.FC<NotebookWorkspaceProps> = ({
                       </div>
                     </div>
 
-                    <h4 
-                      onClick={() => {
-                        setViewingResult(res);
-                        setActiveCenterView('result');
-                        setMobileTab('chat');
-                      }}
-                      className="text-xs font-bold text-[var(--text)] truncate cursor-pointer hover:text-[var(--primary-accent)]"
-                    >
-                      {res.title}
-                    </h4>
+                    {(() => {
+                      const displayTitle = getDisplayTitle(res, savedResults, activeSubject?.name);
+                      const displayPreview = computePreview(res);
+                      return (
+                        <>
+                          <h4 
+                            onClick={() => {
+                              setViewingResult(res);
+                              setActiveCenterView('result');
+                              setMobileTab('chat');
+                            }}
+                            className="text-xs font-bold text-[var(--text)] truncate cursor-pointer hover:text-[var(--primary-accent)]"
+                          >
+                            {displayTitle}
+                          </h4>
 
-                    <p className="text-[11px] text-[var(--muted)] line-clamp-2 leading-relaxed font-sans">
-                      {res.content.slice(0, 120)}...
-                    </p>
+                          <p className="text-[11px] text-[var(--muted)] line-clamp-2 leading-relaxed font-sans">
+                            {displayPreview}
+                          </p>
+                        </>
+                      );
+                    })()}
 
                     <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)] text-[10px] text-[var(--muted)]">
                       <span>{new Date(res.timestamp).toLocaleDateString()}</span>

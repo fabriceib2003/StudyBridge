@@ -41,6 +41,7 @@ import { FlashcardViewer } from './FlashcardViewer';
 import { ManageSubjectsModal } from './ManageSubjectsModal';
 import { MarkdownViewer } from './MarkdownViewer';
 import { Modal } from './Modal';
+import { computeTitle, computePreview, getDisplayTitle } from '../utils/resultUtils';
 
 interface StudyDeskProps {
   subjects: Subject[];
@@ -176,6 +177,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
     quizData?: any;
     flashcardData?: any;
     actionType: ActionType;
+    preview?: string;
   } | null>(null);
 
   // Saved Result Card ID generated for latest run
@@ -482,45 +484,22 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
           return;
         }
 
-        let normalizedType: 'summary' | 'explanation' | 'quiz' | 'flashcards' | 'answer' = 'summary';
-        let title = '';
+        const normalizedType: 'summary' | 'explanation' | 'quiz' | 'flashcards' | 'answer' = 
+          actionType === 'summarize' ? 'summary' :
+          actionType === 'explain' ? 'explanation' :
+          actionType === 'quiz' ? 'quiz' :
+          actionType === 'flashcards' ? 'flashcards' : 'answer';
 
-        if (actionType === 'answer') {
-          normalizedType = 'answer';
-          const cleanQ = instructionText.trim().replace(/^[^a-zA-Z0-9]+/, '').replace(/[?.,!]+$/, '').trim();
-          const shortQ = cleanQ.length > 50 ? cleanQ.slice(0, 50).trim() + '...' : cleanQ;
-          const baseTitle = `Answer: ${shortQ || 'Question'}`;
-          title = baseTitle;
-          const sameTitleCount = savedResults.filter(r => r.title === baseTitle || r.title.startsWith(baseTitle + ' #')).length;
-          if (sameTitleCount > 0) {
-            title = `${baseTitle} #${sameTitleCount + 1}`;
-          }
-        } else {
-          normalizedType = actionType === 'summarize' ? 'summary' : actionType === 'explain' ? 'explanation' : actionType === 'quiz' ? 'quiz' : actionType === 'flashcards' ? 'flashcards' : 'answer';
-          const typeLabel = normalizedType === 'summary' ? 'Summary' : normalizedType === 'explanation' ? 'Explanation' : normalizedType === 'quiz' ? 'Quiz' : normalizedType === 'flashcards' ? 'Flashcards' : 'Answer';
-
-          const firstTicked = materials.find(m => selectedMaterialIds.includes(m.id));
-          const sourceName = explainFocus || firstTicked?.title || activeSubject?.name || 'Study Material';
-          const count = result.quizData ? result.quizData.questions.length : result.flashcardData ? result.flashcardData.cards.length : 0;
-
-          let baseTitle = `${typeLabel}: ${sourceName}`;
-          if (normalizedType === 'flashcards' && count > 0) {
-            baseTitle = `${typeLabel}: ${sourceName} (${count})`;
-          } else if (normalizedType === 'quiz' && count > 0) {
-            baseTitle = `${typeLabel}: ${sourceName} (${count})`;
-          }
-
-          title = baseTitle;
-          const sameTitleCount = savedResults.filter(r => r.title === baseTitle || r.title.startsWith(baseTitle + ' #')).length;
-          if (sameTitleCount > 0) {
-            title = `${baseTitle} #${sameTitleCount + 1}`;
-          }
-        }
+        const firstTicked = materials.find(m => selectedMaterialIds.includes(m.id));
+        const sourceName = explainFocus || instructionText || firstTicked?.title || activeSubject?.name || 'Study Material';
+        const title = computeTitle(normalizedType, result.response, result.quizData, result.flashcardData, sourceName, savedResults);
+        const preview = computePreview({ type: normalizedType, content: result.response, quizData: result.quizData, flashcardData: result.flashcardData });
 
         if (auth.currentUser) {
           const resId = await addResultFirestore(auth.currentUser.uid, {
             subjectId: selectedSubjectId,
             title,
+            preview,
             type: normalizedType as any,
             content: result.response,
             prompt: instructionText.trim() || undefined,
@@ -538,17 +517,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
             ...(result.flashcardData ? { flashcardData: result.flashcardData } : {})
           });
           setLatestSavedResultId(resId);
-          setCurrentResult(prev => prev ? { ...prev, id: resId } : null);
+          setCurrentResult(prev => prev ? { ...prev, id: resId, preview } : null);
 
-          if (actionType === 'answer') {
-            showToast('Answer saved');
-          } else {
-            const firstTicked = materials.find(m => selectedMaterialIds.includes(m.id));
-            const sourceName = explainFocus || firstTicked?.title || activeSubject?.name || 'Study Material';
-            const count = result.quizData ? result.quizData.questions.length : result.flashcardData ? result.flashcardData.cards.length : 0;
-            const msg = `${count > 0 ? count + ' ' : ''}${actionType}s covering ${sourceName}`;
-            showToast(msg);
-          }
+          showToast(`${title} saved`);
         }
       }
 
@@ -1186,14 +1157,20 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   </div>
 
                   <h3 className="text-xs sm:text-sm font-bold text-[var(--text)] truncate">
-                    {(currentResult.actionType === 'answer' || currentResult.actionType === 'custom')
-                      ? (instructionText.trim() || 'Answer')
-                      : (latestSavedResultId ? savedResults.find(r => r.id === latestSavedResultId)?.title || `${currentResult.actionType} result` : `${currentResult.actionType} result`)}
+                    {(() => {
+                      const latestRes = latestSavedResultId ? savedResults.find(r => r.id === latestSavedResultId) : null;
+                      if (latestRes) {
+                        return getDisplayTitle(latestRes, savedResults, activeSubject?.name);
+                      }
+                      const firstTicked = materials.find(m => selectedMaterialIds.includes(m.id));
+                      const src = explainFocus || instructionText || firstTicked?.title || activeSubject?.name || 'Study Material';
+                      return computeTitle(currentResult.actionType, currentResult.response, currentResult.quizData, currentResult.flashcardData, src, savedResults);
+                    })()}
                   </h3>
 
-                  {/* 3-line plain-text preview with Markdown and LaTeX symbols stripped */}
-                  <div className="text-xs text-[var(--text-secondary)] leading-relaxed line-clamp-3 select-none">
-                    {currentResult.response.replace(/[*#$`_~[\]()>{}]/g, '').trim()}
+                  {/* 2-line plain-text preview with Markdown and LaTeX symbols stripped */}
+                  <div className="text-xs text-[var(--text-secondary)] leading-relaxed line-clamp-2 select-none">
+                    {computePreview({ type: currentResult.actionType, content: currentResult.response, quizData: currentResult.quizData, flashcardData: currentResult.flashcardData, preview: currentResult.preview })}
                   </div>
                 </div>
 
@@ -1349,11 +1326,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                       ? <Layers className="w-3 h-3 text-[var(--accent-flashcards)] shrink-0" />
                       : <HelpCircle className="w-3 h-3 text-[var(--accent-answer)] shrink-0" />;
 
-                    // Real titles: if existing title is a fragment, display fallback
-                    let displayTitle = res.title;
-                    if (!displayTitle || displayTitle.length < 3 || (!displayTitle.includes(':') && !displayTitle.includes('Summary') && !displayTitle.includes('Explanation') && !displayTitle.includes('Quiz') && !displayTitle.includes('Flashcards') && !displayTitle.includes('Answer'))) {
-                      displayTitle = `${typeName}: Study Material`;
-                    }
+                    // Real titles & previews via getDisplayTitle and computePreview
+                    const displayTitle = getDisplayTitle(res, savedResults, activeSubject?.name);
+                    const displayPreview = computePreview(res);
 
                     // Explicit action link mapping per type: never fall back to Start quiz
                     const cardCount = res.flashcardData?.cards?.length || 0;
@@ -1424,7 +1399,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                           </h4>
 
                           <p className="text-[11px] text-[var(--muted)] line-clamp-2 leading-relaxed">
-                            {res.content.replace(/[*#$`_~[\]()>{}]/g, '')}
+                            {displayPreview}
                           </p>
                         </div>
 

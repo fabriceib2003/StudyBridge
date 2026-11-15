@@ -23,6 +23,8 @@ import {
 import { User, updatePassword, updateProfile, deleteUser } from 'firebase/auth';
 import { RoutingMode, OnDeviceAIStatus } from '../types';
 import { downloadOnDeviceAI } from '../services/aiService';
+import { db } from '../services/firebaseService';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface SettingsPageProps {
   user: User;
@@ -253,13 +255,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           >
             <Shield className="w-4 h-4" />
             Privacy & Data
-          </button>
-          <button
-            onClick={() => navigate('/migrate')}
-            className="flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-medium text-[var(--warning)] hover:bg-[var(--warning-bg)] transition-colors shrink-0"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Restore Data (Migration)
           </button>
           <button
             onClick={() => navigate('/settings/study')}
@@ -699,33 +694,88 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             } />
 
             <Route path="about" element={
-              <div className="space-y-6 max-w-lg">
-                <div>
-                  <h3 className="text-base font-bold">About StudyBridge</h3>
-                  <p className="text-xs text-[var(--muted)]">Version 2.5.0 • Firebase AI Logic Hybrid Edition • Contact: fabriceib2003@gmail.com</p>
-                </div>
+              (() => {
+                const OWNER_EMAILS = ['fabriceib2003@gmail.com'];
+                const isOwner = user.email && OWNER_EMAILS.includes(user.email);
+                const [regionEnabled, setRegionEnabled] = useState<boolean>(false);
 
-                <div className="bg-[var(--surface-raised)] border border-[var(--border)] p-5 rounded-2xl space-y-3">
-                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                    StudyBridge is an AI study assistant built with React, Tailwind CSS, and Firebase AI Logic. It supports hybrid routing between local on-device AI (where supported) and cloud Vertex AI endpoints, with offline access for your saved notes and materials.
-                  </p>
-                  <a
-                    href="https://firebase.google.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-[var(--primary-accent)] font-medium hover:underline"
-                  >
-                    Firebase Documentation & Support
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
+                useEffect(() => {
+                  if (!isOwner) return;
+                  getDoc(doc(db, 'appConfig/regionRestriction'))
+                    .then(snap => {
+                      if (snap.exists()) setRegionEnabled(Boolean(snap.data()?.enabled));
+                    })
+                    .catch(() => {});
+                }, [isOwner]);
 
-                <div className="pt-4 border-t border-[var(--border)] flex items-center gap-6 text-xs font-medium text-[var(--primary-accent)]">
-                  <Link to="/about" className="hover:underline">About Page</Link>
-                  <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
-                  <Link to="/terms" className="hover:underline">Terms of Service</Link>
-                </div>
-              </div>
+                const handleToggleRegion = async () => {
+                  const nextVal = !regionEnabled;
+                  try {
+                    await setDoc(doc(db, 'appConfig/regionRestriction'), {
+                      enabled: nextVal,
+                      updatedBy: user.email || 'owner',
+                      updatedAt: Date.now()
+                    }, { merge: true });
+                    setRegionEnabled(nextVal);
+                    showToast(`Region restriction ${nextVal ? 'enabled' : 'disabled'}`);
+                  } catch (e: any) {
+                    setErrorMsg(e?.message || 'Failed to update region restriction');
+                  }
+                };
+
+                return (
+                  <div className="space-y-6 max-w-lg">
+                    <div>
+                      <h3 className="text-base font-bold">About StudyBridge</h3>
+                      <p className="text-xs text-[var(--muted)]">Version 2.5.0 • Firebase AI Logic Hybrid Edition • Contact: fabriceib2003@gmail.com</p>
+                    </div>
+
+                    {isOwner && (
+                      <div className="bg-[var(--surface-raised)] border border-[var(--border)] p-5 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text)]">Region Restriction (Owner)</h4>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${regionEnabled ? 'bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning-border)]' : 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success-border)]'}`}>
+                            {regionEnabled ? 'Enabled' : 'Disabled (Off by default)'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--muted)] leading-relaxed">
+                          Control whether regional restrictions are enforced for students in restricted districts (Rubavu, Musanze, Huye, Nyagatare, Kayonza). Owner accounts are never restricted.
+                        </p>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={handleToggleRegion}
+                            className={`px-4 py-2 rounded-xl text-xs font-medium border transition-colors ${regionEnabled ? 'bg-[var(--danger-bg)] text-[var(--danger)] border-[var(--danger-border)] hover:opacity-90' : 'bg-[var(--primary)] text-[var(--primary-text)] border-[var(--primary)] hover:bg-[var(--primary-hover)]'}`}
+                          >
+                            {regionEnabled ? 'Disable Region Restriction' : 'Enable Region Restriction'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="bg-[var(--surface-raised)] border border-[var(--border)] p-5 rounded-2xl space-y-3">
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                        StudyBridge is an AI study assistant built with React, Tailwind CSS, and Firebase AI Logic. It supports hybrid routing between local on-device AI (where supported) and cloud Vertex AI endpoints, with offline access for your saved notes and materials.
+                      </p>
+                      <a
+                        href="https://firebase.google.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-[var(--primary-accent)] font-medium hover:underline"
+                      >
+                        Firebase Documentation & Support
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+
+                    <div className="pt-4 border-t border-[var(--border)] flex items-center gap-6 text-xs font-medium text-[var(--primary-accent)]">
+                      <Link to="/about" className="hover:underline">About Page</Link>
+                      <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
+                      <Link to="/terms" className="hover:underline">Terms of Service</Link>
+                    </div>
+                  </div>
+                );
+              })()
             } />
             <Route path="*" element={<Navigate to="account" replace />} />
           </Routes>

@@ -28,6 +28,8 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
     firestoreReachable: boolean;
     signedIn: boolean;
     onDeviceStatus: string;
+    rawAvailability?: string;
+    chromeVersion?: string;
     aiTestResult: string;
     aiTestSuccess: boolean;
     aiSourceUsed: string;
@@ -123,6 +125,8 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
       firestoreReachable,
       signedIn: Boolean(auth.currentUser),
       onDeviceStatus: deviceCheck.status,
+      rawAvailability: deviceCheck.rawAvailability,
+      chromeVersion: deviceCheck.chromeVersion,
       aiTestResult,
       aiTestSuccess,
       aiSourceUsed,
@@ -215,6 +219,11 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
                 <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]">
                   <span className="font-medium text-[var(--text-secondary)]">On-Device AI Status</span>
                   <span className="font-bold text-[var(--primary-accent)] uppercase tracking-wider">{readinessResults.onDeviceStatus}</span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]">
+                  <span className="font-medium text-[var(--text-secondary)]">Raw availability() / Chrome</span>
+                  <span className="font-mono text-xs text-[var(--text)]">{readinessResults.rawAvailability || 'N/A'} (Chrome {readinessResults.chromeVersion || 'N/A'})</span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]">

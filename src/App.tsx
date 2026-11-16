@@ -210,6 +210,13 @@ export default function App() {
 
   useEffect(() => {
     refreshDeviceAiCapability();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshDeviceAiCapability();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
   // Auth observer & cleanup (offline/network errors never sign the user out)

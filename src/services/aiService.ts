@@ -3,6 +3,8 @@ import { getCachedSection, setCachedSection } from "./firestoreService";
 import { auth, ai, getRemoteConfigValue, checkAppCheckToken, isAppCheckInCooldown, markAppCheckFailure, getAppCheckErrorMessage } from "./firebaseService";
 import { getGenerativeModel, InferenceMode, InferenceSource, ThinkingLevel } from "firebase/ai";
 
+declare var LanguageModel: any;
+
 export { InferenceMode, InferenceSource };
 
 export function isFirebaseConfigured(): boolean {
@@ -71,81 +73,104 @@ export async function checkOnDeviceAIAvailability(): Promise<{
   available: boolean;
   details: string;
   browserName: string;
+  rawAvailability: string;
+  chromeVersion: string;
 }> {
   const browserName = detectBrowserName();
+  let rawAvailability = 'undefined';
+  let chromeVersion = 'unknown';
+
   try {
-    if (typeof window === 'undefined') {
-      return {
-        status: 'unsupported',
-        available: false,
-        details: "Not available in this browser. You can still use cloud AI online and study saved material offline. For offline AI, use Chrome on a desktop computer.",
-        browserName
-      };
+    if (typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent;
+      const match = ua.match(/(?:Chrome|Chromium)\/([0-9.]+)/);
+      if (match) {
+        chromeVersion = match[1];
+      }
     }
-    const aiApi = (window as any).ai?.languageModel;
-    if (!aiApi) {
+
+    let availabilityFn: any = null;
+    if (typeof LanguageModel !== 'undefined' && typeof LanguageModel.availability === 'function') {
+      availabilityFn = LanguageModel.availability;
+    } else if (typeof window !== 'undefined') {
+      if ((window as any).LanguageModel && typeof (window as any).LanguageModel.availability === 'function') {
+        availabilityFn = (window as any).LanguageModel.availability;
+      } else if ((window as any).ai?.languageModel && typeof (window as any).ai.languageModel.availability === 'function') {
+        availabilityFn = (window as any).ai.languageModel.availability;
+      } else if ((window as any).ai?.languageModel && typeof (window as any).ai.languageModel.capabilities === 'function') {
+        availabilityFn = async () => {
+          const caps = await (window as any).ai.languageModel.capabilities();
+          return caps?.available || 'unavailable';
+        };
+      }
+    }
+
+    if (!availabilityFn) {
       return {
         status: 'unsupported',
         available: false,
-        details: "Not available in this browser. You can still use cloud AI online and study saved material offline. For offline AI, use Chrome on a desktop computer.",
-        browserName
+        details: 'LanguageModel API not found in this browser.',
+        browserName,
+        rawAvailability: 'not found',
+        chromeVersion
       };
     }
 
-    let rawStatus = 'no';
-    const checkPromise = (async () => {
-      if (typeof aiApi.capabilities === 'function') {
-        const caps = await aiApi.capabilities();
-        return caps?.available || 'no';
-      } else if (typeof aiApi.availability === 'function') {
-        return await aiApi.availability();
-      }
-      return 'no';
-    })();
-    rawStatus = await Promise.race([
-      checkPromise,
-      new Promise<string>((resolve) => setTimeout(() => resolve('no'), 1500))
+    const res = await Promise.race([
+      availabilityFn(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 2500))
     ]);
 
-    if (rawStatus === 'readily' || rawStatus === 'available' || rawStatus === 'yes') {
+    rawAvailability = String(res).trim();
+    const r = rawAvailability.toLowerCase();
+
+    if (r === 'available' || r === 'readily' || r === 'yes') {
       return {
         status: 'available',
         available: true,
-        details: `Available and ready for on-device inference in ${browserName}.`,
-        browserName
+        details: `Available (${rawAvailability}) in ${browserName}.`,
+        browserName,
+        rawAvailability,
+        chromeVersion
       };
     }
-
-    if (rawStatus === 'after-download' || rawStatus === 'downloadable') {
+    if (r === 'downloadable' || r === 'after-download') {
       return {
         status: 'downloadable',
         available: false,
-        details: `On-device AI model is available for download in ${browserName}.`,
-        browserName
+        details: `Downloadable (${rawAvailability}) in ${browserName}.`,
+        browserName,
+        rawAvailability,
+        chromeVersion
       };
     }
-
-    if (rawStatus === 'downloading') {
+    if (r === 'downloading') {
       return {
         status: 'downloading',
         available: false,
-        details: `On-device AI model is currently downloading in ${browserName}.`,
-        browserName
+        details: `Downloading (${rawAvailability}) in ${browserName}.`,
+        browserName,
+        rawAvailability,
+        chromeVersion
       };
     }
 
     return {
       status: 'unsupported',
       available: false,
-      details: "Not available in this browser. You can still use cloud AI online and study saved material offline. For offline AI, use Chrome on a desktop computer.",
-      browserName
+      details: `Unavailable (${rawAvailability}) in ${browserName}.`,
+      browserName,
+      rawAvailability,
+      chromeVersion
     };
-  } catch {
+  } catch (err: any) {
     return {
       status: 'unsupported',
       available: false,
-      details: "Not available in this browser. You can still use cloud AI online and study saved material offline. For offline AI, use Chrome on a desktop computer.",
-      browserName
+      details: `Check error: ${err?.message || err}`,
+      browserName,
+      rawAvailability: err?.message || 'error',
+      chromeVersion
     };
   }
 }
@@ -244,7 +269,7 @@ export function determineRoute(
   }
 
   // 4. Auto mode
-  // Auto short/simple -> PREFER_ON_DEVICE; Auto long, quiz, flashcards, image descriptions -> PREFER_IN_CLOUD
+  // Auto short/simple -> PREFER_ON_DEVICE when available; Auto long, quiz, flashcards -> PREFER_IN_CLOUD
   const isComplexTask = actionType === 'quiz' || actionType === 'flashcards' || actionType === 'custom' || textLength > shortLimit;
 
   if (isComplexTask) {
@@ -254,11 +279,19 @@ export function determineRoute(
       routingReason: 'Auto mode: Long document, quiz, or flashcards prefers high-capacity cloud model via Firebase AI Logic.'
     };
   } else {
-    return {
-      route: 'on-device',
-      inferenceModeUsed: InferenceMode.PREFER_ON_DEVICE,
-      routingReason: 'Auto mode: Short input and standard query prefers fast on-device inference.'
-    };
+    if (isOnDeviceSupported) {
+      return {
+        route: 'on-device',
+        inferenceModeUsed: InferenceMode.PREFER_ON_DEVICE,
+        routingReason: 'Auto mode: Short input prefers fast on-device inference (Prompt API available).'
+      };
+    } else {
+      return {
+        route: 'cloud',
+        inferenceModeUsed: InferenceMode.PREFER_IN_CLOUD,
+        routingReason: 'Auto mode: Short input routed to cloud as on-device AI is not available.'
+      };
+    }
   }
 }
 

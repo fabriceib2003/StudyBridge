@@ -229,8 +229,14 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
                 </div>
 
                 {readinessResults.details && (
-                  <div className="col-span-1 sm:col-span-2 p-3 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning)] text-[11px] leading-relaxed">
-                    <strong>Why unsupported:</strong> {readinessResults.details}
+                  <div className={`col-span-1 sm:col-span-2 p-3 rounded-xl border text-[11px] leading-relaxed ${
+                    readinessResults.onDeviceStatus === 'available'
+                      ? 'border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success)]'
+                      : readinessResults.onDeviceStatus === 'downloadable' || readinessResults.onDeviceStatus === 'downloading'
+                      ? 'border-[var(--info-border)] bg-[var(--info-bg)] text-[var(--info)]'
+                      : 'border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning)]'
+                  }`}>
+                    <strong>{readinessResults.onDeviceStatus === 'unsupported' ? 'Why unsupported:' : 'Status details:'}</strong> {readinessResults.details}
                   </div>
                 )}
 

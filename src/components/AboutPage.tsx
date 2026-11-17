@@ -30,6 +30,7 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
     onDeviceStatus: string;
     rawAvailability?: string;
     chromeVersion?: string;
+    details?: string;
     aiTestResult: string;
     aiTestSuccess: boolean;
     aiSourceUsed: string;
@@ -127,6 +128,7 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
       onDeviceStatus: deviceCheck.status,
       rawAvailability: deviceCheck.rawAvailability,
       chromeVersion: deviceCheck.chromeVersion,
+      details: deviceCheck.details,
       aiTestResult,
       aiTestSuccess,
       aiSourceUsed,
@@ -225,6 +227,12 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
                   <span className="font-medium text-[var(--text-secondary)]">Raw availability() / Chrome</span>
                   <span className="font-mono text-xs text-[var(--text)]">{readinessResults.rawAvailability || 'N/A'} (Chrome {readinessResults.chromeVersion || 'N/A'})</span>
                 </div>
+
+                {readinessResults.details && (
+                  <div className="col-span-1 sm:col-span-2 p-3 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning)] text-[11px] leading-relaxed">
+                    <strong>Why unsupported:</strong> {readinessResults.details}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]">
                   <span className="font-medium text-[var(--text-secondary)]">Tiny AI Logic Test</span>

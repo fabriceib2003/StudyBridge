@@ -106,12 +106,18 @@ export async function checkOnDeviceAIAvailability(): Promise<{
     }
 
     if (!availabilityFn) {
+      const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+      const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+      const originReason = !isLocal 
+        ? `External origin (${hostname}) requires Chrome Origin Trial token or localhost for window.ai. (chrome://on-device-internals bypasses origin restrictions)`
+        : 'LanguageModel / window.ai API not found. Ensure Chrome flags (#optimization-guide-on-device-model, #prompt-api-for-gemini-nano) are enabled in chrome://flags.';
+
       return {
         status: 'unsupported',
         available: false,
-        details: 'LanguageModel API not found in this browser.',
+        details: originReason,
         browserName,
-        rawAvailability: 'not found',
+        rawAvailability: 'not found (origin restriction / api missing)',
         chromeVersion
       };
     }

@@ -125,15 +125,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     setDownloadingProgress(0);
     setDownloadError(null);
     try {
-      const success = await downloadOnDeviceAI((percent) => {
+      const res = await downloadOnDeviceAI((percent) => {
         setDownloadingProgress(percent);
       });
       setIsDownloading(false);
-      if (success) {
+      if (res.success) {
         showToast('Offline AI model downloaded successfully!');
         onRefreshDeviceAi?.();
       } else {
-        setDownloadError('Download could not be completed in this browser. Please check browser settings.');
+        setDownloadError(res.error || 'Download could not be completed in this browser. Please check browser settings.');
       }
     } catch (err: any) {
       setIsDownloading(false);

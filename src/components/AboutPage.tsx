@@ -236,7 +236,7 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
                       ? 'border-[var(--info-border)] bg-[var(--info-bg)] text-[var(--info)]'
                       : 'border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning)]'
                   }`}>
-                    <strong>{readinessResults.onDeviceStatus === 'unsupported' ? 'Why unsupported:' : 'Status details:'}</strong> {readinessResults.details}
+                    <strong>{readinessResults.onDeviceStatus === 'available' ? 'Ready status:' : readinessResults.onDeviceStatus === 'downloadable' || readinessResults.onDeviceStatus === 'downloading' ? 'Download status:' : 'Why unsupported:'}</strong> {readinessResults.details}
                   </div>
                 )}
 

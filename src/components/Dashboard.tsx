@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { AIInteraction, UserStats, Subject } from '../types';
 import { getRouteLabel } from '../services/aiService';
+import { useTheme } from '../contexts/ThemeContext';
+import { getSubjectColorTheme } from '../utils/subjectColors';
 
 interface DashboardProps {
   stats: UserStats;
@@ -30,6 +32,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNavigateDesk,
   onClearHistory
 }) => {
+  const { isDark } = useTheme();
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 KB';
     const k = 1024;
@@ -167,24 +170,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm space-y-4 lg:col-span-1">
               <h3 className="text-sm font-semibold text-[var(--text)]">Subject Activity</h3>
               <div className="space-y-3">
-                {subjectCounts.map((sub) => (
-                  <div key={sub.id} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-[var(--text-secondary)]">{sub.name}</span>
-                      <span className="text-[var(--muted)]">{sub.count} queries</span>
+                {subjectCounts.map((sub) => {
+                  const subTheme = getSubjectColorTheme(sub, isDark);
+                  return (
+                    <div key={sub.id} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-[var(--text-secondary)]">{sub.name}</span>
+                        <span className="text-[var(--muted)]">{sub.count} queries</span>
+                      </div>
+                      <div className="w-full bg-[var(--chart-track)] h-2 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full rounded-full"
+                          style={{ 
+                            backgroundColor: subTheme.dotColor,
+                            width: stats.totalRequests > 0 
+                              ? `${Math.max(5, (sub.count / stats.totalRequests) * 100)}%` 
+                              : '0%' 
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-[var(--chart-track)] h-2 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full bg-gradient-to-r ${sub.color}`} 
-                        style={{ 
-                          width: stats.totalRequests > 0 
-                            ? `${Math.max(5, (sub.count / stats.totalRequests) * 100)}%` 
-                            : '0%' 
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

@@ -42,6 +42,8 @@ import { FAIL_OPEN, RESTRICTION_CODE } from './config/regionRestriction';
 import { Loader2, WifiOff, AlertTriangle } from 'lucide-react';
 import { Modal } from './components/Modal';
 import { useTheme } from './contexts/ThemeContext';
+import { SubjectProvider } from './contexts/SubjectContext';
+import { DEFAULT_SUBJECT_COLOR } from './utils/subjectColors';
 import 'katex/dist/katex.min.css';
 
 
@@ -96,6 +98,8 @@ export default function App() {
   const [studyLanguage, setStudyLanguage] = useState<string>('English');
   const [dailyGoal, setDailyGoal] = useState<number>(5);
   const [reminders, setReminders] = useState<boolean>(true);
+  const [preferredSubjectId, setPreferredSubjectId] = useState<string>('');
+  const pendingSubjectCreatesRef = React.useRef<Map<string, Promise<any>>>(new Map());
 
   // On-device AI capability check (available, downloadable, downloading, unsupported)
   const [deviceAiStatus, setDeviceAiStatus] = useState<OnDeviceAIStatus>('unsupported');
@@ -237,6 +241,7 @@ export default function App() {
         setMaterials([]);
         setInteractions([]);
         setSavedResults([]);
+        setPreferredSubjectId('');
       } else {
         explicitSignOutRef.current = false;
         userRef.current = currentUser;
@@ -251,6 +256,12 @@ export default function App() {
             if (prefs.studyLanguage) setStudyLanguage(prefs.studyLanguage);
             if (prefs.dailyStudyGoal) setDailyGoal(prefs.dailyStudyGoal);
             if (prefs.remindersEnabled !== undefined) setReminders(prefs.remindersEnabled);
+            if (prefs.activeSubjectId) {
+              setPreferredSubjectId(prefs.activeSubjectId);
+              if (typeof localStorage !== 'undefined' && !localStorage.getItem('studybridge_active_subject_id')) {
+                localStorage.setItem('studybridge_active_subject_id', prefs.activeSubjectId);
+              }
+            }
           }
           prefsLoadedForUidRef.current = currentUser.uid;
         } catch (e) {
@@ -354,7 +365,21 @@ export default function App() {
 
   const handleAddSubject = async (newSub: Omit<Subject, 'id'>) => {
     if (!user) return;
-    return await addSubjectFirestore(user.uid, newSub);
+    const trimmed = newSub.name.trim().toLowerCase();
+    const existing = subjects.find(s => s.name.trim().toLowerCase() === trimmed);
+    if (existing) {
+      return existing;
+    }
+    const pending = pendingSubjectCreatesRef.current.get(trimmed);
+    if (pending) {
+      return await pending;
+    }
+    const color = newSub.color || DEFAULT_SUBJECT_COLOR;
+    const promise = addSubjectFirestore(user.uid, { ...newSub, color }).finally(() => {
+      pendingSubjectCreatesRef.current.delete(trimmed);
+    });
+    pendingSubjectCreatesRef.current.set(trimmed, promise);
+    return await promise;
   };
 
   const handleUpdateSubject = async (id: string, updates: Partial<Subject>) => {
@@ -364,11 +389,29 @@ export default function App() {
 
   const handleDeleteSubject = async (id: string) => {
     if (!user) return;
+    const currentActive = typeof localStorage !== 'undefined' ? localStorage.getItem('studybridge_active_subject_id') : null;
+    if (currentActive === id) {
+      const remaining = subjects.filter(s => s.id !== id);
+      const nextId = remaining[0]?.id || '';
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('studybridge_active_subject_id', nextId);
+      }
+      updatePreferences(user.uid, { activeSubjectId: nextId }).catch(() => {});
+    }
     await deleteSubjectFirestore(user.uid, id);
   };
 
   const handleDeleteSubjectWithOptions = async (id: string, action: 'delete-materials' | 'move', targetSubjectId?: string) => {
     if (!user) return;
+    const currentActive = typeof localStorage !== 'undefined' ? localStorage.getItem('studybridge_active_subject_id') : null;
+    if (currentActive === id) {
+      const remaining = subjects.filter(s => s.id !== id);
+      const nextId = remaining[0]?.id || '';
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('studybridge_active_subject_id', nextId);
+      }
+      updatePreferences(user.uid, { activeSubjectId: nextId }).catch(() => {});
+    }
     await deleteSubjectWithOptions(user.uid, id, action, targetSubjectId);
   };
 
@@ -440,7 +483,8 @@ export default function App() {
           'studybridge_interactions_v2',
           'studybridge_manual_route_v2',
           'studybridge_study_language',
-          'studybridge_drive_connected'
+          'studybridge_drive_connected',
+          'studybridge_active_subject_id'
         ];
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
@@ -561,12 +605,13 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={!isOnline && user ? <Navigate to="/study" replace /> : <HomePage user={user} theme={theme} setTheme={setTheme} />} />
-        <Route path="/login" element={!isOnline && user ? <Navigate to="/study" replace /> : <AuthScreen darkMode={isDark} />} />
-        <Route path="/about" element={<AboutPage theme={theme} setTheme={setTheme} />} />
-        <Route path="/privacy" element={<PrivacyPage theme={theme} setTheme={setTheme} />} />
+    <SubjectProvider subjects={subjects} user={user} preferredSubjectId={preferredSubjectId}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={!isOnline && user ? <Navigate to="/study" replace /> : <HomePage user={user} theme={theme} setTheme={setTheme} />} />
+          <Route path="/login" element={!isOnline && user ? <Navigate to="/study" replace /> : <AuthScreen darkMode={isDark} />} />
+          <Route path="/about" element={<AboutPage theme={theme} setTheme={setTheme} />} />
+          <Route path="/privacy" element={<PrivacyPage theme={theme} setTheme={setTheme} />} />
         <Route path="/terms" element={<TermsPage theme={theme} setTheme={setTheme} />} />
         
         {/* Protected Routes Wrapper */}
@@ -676,6 +721,20 @@ export default function App() {
                       isDeviceAiAvailable={isDeviceAiAvailable}
                     />
                   } />
+                  <Route path="materials/:subjectId" element={
+                    <MaterialLibrary
+                      materials={materials}
+                      subjects={subjects}
+                      onAddMaterial={handleAddMaterial}
+                      onDeleteMaterial={handleDeleteMaterial}
+                      onSelectMaterial={(mat) => setSelectedMaterial(mat)}
+                      onAddSubject={handleAddSubject}
+                      onUpdateSubject={handleUpdateSubject}
+                      onDeleteSubjectWithOptions={handleDeleteSubjectWithOptions}
+                      onMoveMaterial={handleMoveMaterial}
+                      isDeviceAiAvailable={isDeviceAiAvailable}
+                    />
+                  } />
                   <Route path="results/:id" element={
                     <ResultPage
                       subjects={subjects}
@@ -738,5 +797,6 @@ export default function App() {
         } />
       </Routes>
     </BrowserRouter>
+  </SubjectProvider>
   );
 }

@@ -2,6 +2,7 @@ import { ActionType, InferenceRoute, RoutingMode, OnDeviceAIStatus } from "../ty
 import { getCachedSection, setCachedSection } from "./firestoreService";
 import { auth, ai, getRemoteConfigValue, checkAppCheckToken, isAppCheckInCooldown, markAppCheckFailure, getAppCheckErrorMessage } from "./firebaseService";
 import { getGenerativeModel, InferenceMode, InferenceSource, ThinkingLevel } from "firebase/ai";
+import { NO_GREETINGS_PROMPT_RULE, stripGreetingsAndOffers } from "../utils/aiCleaners";
 
 declare var LanguageModel: any;
 
@@ -184,13 +185,23 @@ export async function checkOnDeviceAIAvailability(): Promise<{
 /**
  * Downloads on-device AI model when status is downloadable
  */
-export async function downloadOnDeviceAI(onProgress?: (percent: number) => void): Promise<boolean> {
+export async function downloadOnDeviceAI(onProgress?: (percent: number) => void): Promise<{ success: boolean; error?: string }> {
   try {
-    if (typeof window === 'undefined') return false;
-    const aiApi = (window as any).ai?.languageModel;
-    if (!aiApi || typeof aiApi.create !== 'function') return false;
+    if (typeof window === 'undefined') return { success: false, error: 'Not in browser environment' };
+    let createFn: any = null;
+    if (typeof LanguageModel !== 'undefined' && typeof LanguageModel.create === 'function') {
+      createFn = LanguageModel.create;
+    } else if ((window as any).LanguageModel && typeof (window as any).LanguageModel.create === 'function') {
+      createFn = (window as any).LanguageModel.create;
+    } else if ((window as any).ai?.languageModel && typeof (window as any).ai.languageModel.create === 'function') {
+      createFn = (window as any).ai.languageModel.create;
+    }
 
-    const session = await aiApi.create({
+    if (!createFn) {
+      return { success: false, error: 'LanguageModel.create API not found. Ensure Chrome Prompt API flags are enabled.' };
+    }
+
+    const session = await createFn({
       monitor(m: any) {
         if (m && typeof m.addEventListener === 'function') {
           m.addEventListener('downloadprogress', (e: any) => {
@@ -206,10 +217,11 @@ export async function downloadOnDeviceAI(onProgress?: (percent: number) => void)
     if (session && typeof session.destroy === 'function') {
       try { session.destroy(); } catch (_) {}
     }
-    return true;
-  } catch (err) {
-    console.warn("Failed to download on-device AI:", err);
-    return false;
+    return { success: true };
+  } catch (err: any) {
+    const errMessage = err?.message || String(err);
+    console.warn("Failed to download on-device AI:", errMessage);
+    return { success: false, error: errMessage };
   }
 }
 
@@ -446,13 +458,14 @@ export function buildPrompt(options: {
     : `Write your response in English.`;
 
   if (options.actionType === 'summarize') {
-    return `You are StudyBridge, an expert academic study assistant. Provide a clear, comprehensive, highly structured summary of the study material below.
+    return `In an expert, clear, high-yield academic style, provide a comprehensive and structured summary of the study material below.
 
 STRICT INSTRUCTIONS:
-1. Provide a professional, high-yield summary highlighting core concepts, definitions, formulas, and key takeaways.
-2. Structure with clear Markdown headings (##) and bullet points.
-3. Include LaTeX math notation ($...$ inline, $$...$$ block) for any equations or formulas.
-4. ${langRule}
+1. ${NO_GREETINGS_PROMPT_RULE}
+2. Provide a professional, high-yield summary highlighting core concepts, definitions, formulas, and key takeaways.
+3. Structure with clear Markdown headings (##) and bullet points.
+4. Include LaTeX math notation ($...$ inline, $$...$$ block) for any equations or formulas.
+5. ${langRule}
 
 STUDY MATERIAL:
 ${preparedText}`;
@@ -461,24 +474,26 @@ ${preparedText}`;
   if (options.actionType === 'explain') {
     const level = options.explainLevel || 'Student';
     const focus = options.explainFocus ? ` Focus on: ${options.explainFocus}.` : '';
-    return `You are StudyBridge, an expert academic tutor. Explain the following study concept at a ${level} level.${focus}
+    return `In an expert academic style, explain the following study concept at a ${level} level.${focus}
 
 STRICT INSTRUCTIONS:
-1. Break down the concept clearly with definitions, practical examples, and clear explanations.
-2. Use Markdown headings and bullet points.
-3. Include LaTeX math notation ($...$ inline, $$...$$ block) where relevant.
-4. ${langRule}
+1. ${NO_GREETINGS_PROMPT_RULE}
+2. Break down the concept clearly with definitions, practical examples, and clear explanations.
+3. Use Markdown headings and bullet points.
+4. Include LaTeX math notation ($...$ inline, $$...$$ block) where relevant.
+5. ${langRule}
 
 CONCEPT / MATERIAL:
 ${preparedText}`;
   }
 
   if (options.actionType === 'quiz') {
-    return `You are StudyBridge, an expert academic exam creator. Create a multiple-choice practice quiz based on the study material below.
+    return `In an expert academic examiner style, create a multiple-choice practice quiz based on the study material below.
 
 STRICT INSTRUCTIONS:
-1. Generate exactly 5 challenging, high-quality multiple-choice questions.
-2. Return ONLY valid JSON matching this exact structure with no markdown code block formatting or extra text:
+1. ${NO_GREETINGS_PROMPT_RULE}
+2. Generate exactly 5 challenging, high-quality multiple-choice questions.
+3. Return ONLY valid JSON matching this exact structure with no markdown code block formatting or extra text:
 {
   "title": "Main topic name (e.g. Phase relationships and soil classification)",
   "questions": [
@@ -491,18 +506,19 @@ STRICT INSTRUCTIONS:
     }
   ]
 }
-3. ${langRule}
+4. ${langRule}
 
 STUDY MATERIAL:
 ${preparedText}`;
   }
 
   if (options.actionType === 'flashcards') {
-    return `You are StudyBridge, an expert academic educator. Create a deck of spaced-repetition study flashcards based on the study material below.
+    return `In an expert academic educator style, create a deck of spaced-repetition study flashcards based on the study material below.
 
 STRICT INSTRUCTIONS:
-1. Generate between 8 and 12 high-yield flashcards covering key terms, definitions, formulas, and concepts.
-2. Return ONLY valid JSON matching this exact structure with no markdown code block formatting or extra text:
+1. ${NO_GREETINGS_PROMPT_RULE}
+2. Generate between 8 and 12 high-yield flashcards covering key terms, definitions, formulas, and concepts.
+3. Return ONLY valid JSON matching this exact structure with no markdown code block formatting or extra text:
 {
   "title": "Main topic name (e.g. Phase relationships and soil classification)",
   "cards": [
@@ -513,19 +529,20 @@ STRICT INSTRUCTIONS:
     }
   ]
 }
-3. ${langRule}
+4. ${langRule}
 
 STUDY MATERIAL:
 ${preparedText}`;
   }
 
   if (options.actionType === 'answer') {
-    return `You are StudyBridge, an expert academic study assistant. Answer the user's question using ONLY the provided study material.
+    return `In an expert, direct academic style, answer the user's question using ONLY the provided study material.
 
 STRICT INSTRUCTIONS:
-1. Answer directly and precisely.
-2. Use Markdown and LaTeX math notation ($...$ inline, $$...$$ block) where relevant.
-3. ${langRule}
+1. ${NO_GREETINGS_PROMPT_RULE}
+2. Answer directly and precisely.
+3. Use Markdown and LaTeX math notation ($...$ inline, $$...$$ block) where relevant.
+4. ${langRule}
 
 USER QUESTION:
 ${options.instructionText || ''}
@@ -534,7 +551,11 @@ STUDY MATERIAL:
 ${preparedText}`;
   }
 
-  return `You are StudyBridge. Analyze the following material and provide a detailed study response.\n\nMaterial:\n${preparedText}`;
+  return `In an expert academic style, analyze the following material and provide a detailed study response.
+${NO_GREETINGS_PROMPT_RULE}
+
+Material:
+${preparedText}`;
 }
 
 export interface ExecuteAIOptions {
@@ -749,7 +770,7 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
             );
           }
           accumulated += chunkText;
-          options.onStream?.(accumulated);
+          options.onStream?.(stripGreetingsAndOffers(accumulated));
         }
       }
 
@@ -816,8 +837,10 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
     flashcardData = cleanAndParseJSON(fullText);
   }
 
+  const cleanedFinalResponse = stripGreetingsAndOffers(fullText);
+
   return {
-    response: fullText,
+    response: cleanedFinalResponse,
     route: actualRoute,
     inferenceModeUsed: actualMode,
     routingReason: actualReason,

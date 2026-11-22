@@ -28,6 +28,10 @@ import { QuizArena } from './QuizArena';
 import { FlashcardViewer } from './FlashcardViewer';
 import { Modal } from './Modal';
 import { getDisplayTitle } from '../utils/resultUtils';
+import { useActiveSubject } from '../contexts/SubjectContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { getSubjectColorTheme } from '../utils/subjectColors';
+import { stripGreetingsAndOffers } from '../utils/aiCleaners';
 
 interface ResultPageProps {
   subjects: Subject[];
@@ -44,6 +48,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({
 }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { setActiveSubjectId } = useActiveSubject();
+  const { isDark } = useTheme();
 
   const [result, setResult] = useState<SavedResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,6 +122,9 @@ export const ResultPage: React.FC<ResultPageProps> = ({
         if (isMounted) {
           if (data) {
             setResult(data);
+            if (data.subjectId) {
+              setActiveSubjectId(data.subjectId, true);
+            }
             if (data.flashcardData?.cards?.length) {
               setGeneratedFlashcards(data.flashcardData);
             } else if (data.content) {
@@ -292,7 +301,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
       const newFollowUp = {
         id: `fu_${Date.now()}`,
         question: followUpQuestion.trim(),
-        answer: res.response,
+        answer: stripGreetingsAndOffers(res.response),
         timestamp: Date.now()
       };
 
@@ -319,7 +328,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
 
   const handleCopy = () => {
     if (!result?.content) return;
-    navigator.clipboard.writeText(result.content);
+    navigator.clipboard.writeText(stripGreetingsAndOffers(result.content));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -327,6 +336,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
   const handleSaveAsNote = async () => {
     if (!result?.content || !auth.currentUser) return;
     try {
+      const cleanNote = stripGreetingsAndOffers(result.content);
       const typePrefix = result.type === 'summary' ? 'Summary' : result.type === 'explanation' ? 'Explanation' : result.type === 'quiz' ? 'Quiz' : result.type === 'flashcards' ? 'Flashcards' : 'Answer';
       const title = `${typePrefix}: ${result.title || 'Untitled Result'}`;
       await saveMaterialWithChunks(
@@ -337,8 +347,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({
           pageCount: 1,
           hasImages: false
         },
-        result.content,
-        [{ pageNumber: 1, text: result.content, hasVisualDiagrams: false }]
+        cleanNote,
+        [{ pageNumber: 1, text: cleanNote, hasVisualDiagrams: false }]
       );
       setSavedAsNote(true);
       setTimeout(() => setSavedAsNote(false), 3000);
@@ -392,9 +402,11 @@ export const ResultPage: React.FC<ResultPageProps> = ({
         setGeneratedQuiz(res.quizData);
       }
 
+      const cleanedRegenContent = stripGreetingsAndOffers(res.response);
+
       if (result.id) {
         await updateResultFirestore(auth.currentUser.uid, result.id, {
-          content: res.response,
+          content: cleanedRegenContent,
           route: res.route,
           latencyMs: res.latencyMs,
           ttftMs: res.ttftMs,
@@ -406,7 +418,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
 
       setResult(prev => prev ? {
         ...prev,
-        content: res.response,
+        content: cleanedRegenContent,
         route: res.route,
         latencyMs: res.latencyMs,
         ttftMs: res.ttftMs,
@@ -589,6 +601,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
   }
 
   const subject = subjects.find(s => s.id === result.subjectId);
+  const subjectTheme = getSubjectColorTheme(subject, isDark);
   const hasContent = Boolean(result.content && result.content.trim().length > 0);
   const isEmptyContent = !hasContent;
 
@@ -859,10 +872,17 @@ export const ResultPage: React.FC<ResultPageProps> = ({
       </div>
 
       {/* Document Header & Metadata Banner */}
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
+      <div
+        style={subjectTheme.borderLeftStyle}
+        className={`bg-[var(--surface)] border border-[var(--border)] ${subjectTheme.borderLeftClass} rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm`}
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--surface-raised)] text-[var(--text-secondary)] border border-[var(--border)]">
+            <span
+              style={subjectTheme.badgeStyle}
+              className="text-xs font-bold px-3 py-1 rounded-full inline-flex items-center gap-1.5 border shadow-xs"
+            >
+              <span className="w-2 h-2 rounded-full shrink-0" style={subjectTheme.dotStyle} />
               {subject?.name || 'General Study'}
             </span>
 
@@ -1032,7 +1052,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({
               "{result.prompt}"
             </blockquote>
           )}
-          <MarkdownViewer content={result.content} />
+          <MarkdownViewer content={stripGreetingsAndOffers(result.content)} />
         </div>
       )}
 
@@ -1073,12 +1093,12 @@ export const ResultPage: React.FC<ResultPageProps> = ({
                     A
                   </div>
                   <div className="flex-1 overflow-x-auto min-w-0">
-                    <MarkdownViewer content={fu.answer} />
+                    <MarkdownViewer content={stripGreetingsAndOffers(fu.answer)} />
                     <div className="pt-2 flex justify-end">
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(fu.answer);
+                          navigator.clipboard.writeText(stripGreetingsAndOffers(fu.answer));
                           setCopiedFollowUpId(fu.id || String(idx));
                           setTimeout(() => setCopiedFollowUpId(null), 2000);
                         }}

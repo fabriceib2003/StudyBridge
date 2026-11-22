@@ -27,9 +27,7 @@ import {
   ChevronUp, 
   SlidersHorizontal,
   ExternalLink,
-  Trash2,
-  ChevronLeft,
-  ChevronRight
+  Trash2
 } from 'lucide-react';
 import { Subject, Material, ActionType, RoutingMode, AIInteraction, Page, SavedResult, GenerationSettings } from '../types';
 import { executeAIRequest, determineRoute, getRouteLabel, isFirebaseConfigured } from '../services/aiService';
@@ -42,6 +40,10 @@ import { ManageSubjectsModal } from './ManageSubjectsModal';
 import { MarkdownViewer } from './MarkdownViewer';
 import { Modal } from './Modal';
 import { computeTitle, computePreview, getDisplayTitle } from '../utils/resultUtils';
+import { useActiveSubject } from '../contexts/SubjectContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { getSubjectColorTheme, DEFAULT_SUBJECT_COLOR } from '../utils/subjectColors';
+import { stripGreetingsAndOffers } from '../utils/aiCleaners';
 
 interface StudyDeskProps {
   subjects: Subject[];
@@ -61,6 +63,30 @@ interface StudyDeskProps {
   isDeviceAiAvailable?: boolean;
   studyLanguage?: string;
 }
+
+const getMaterialsPerPage = (width: number): number => {
+  if (width >= 1280) return 6;
+  if (width >= 1024) return 4;
+  if (width >= 640) return 3;
+  return 2;
+};
+
+const getResultsPerPage = (width: number): number => {
+  return width >= 1024 ? 4 : 2;
+};
+
+const getPaginationItems = (currentPage: number, totalPages: number): (number | 'ellipsis')[] => {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  if (currentPage <= 3) {
+    return [1, 2, 3, 4, 'ellipsis', totalPages];
+  }
+  if (currentPage >= totalPages - 2) {
+    return [1, 'ellipsis', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+  return [1, 'ellipsis', currentPage - 1, currentPage, currentPage + 1, 'ellipsis', totalPages];
+};
 
 export const StudyDesk: React.FC<StudyDeskProps> = ({
   subjects,
@@ -82,19 +108,23 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  // Active Subject
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(subjects[0]?.id || '');
+  // Active Subject from app-level store above the router
+  const { activeSubjectId, activeSubject, setActiveSubjectId } = useActiveSubject();
+  const { isDark } = useTheme();
+  const activeSubjectTheme = getSubjectColorTheme(activeSubject, isDark);
 
   // Subject management modals / inline
   const [isManageSubjectsOpen, setIsManageSubjectsOpen] = useState(false);
   const [isInlineCreatingSubject, setIsInlineCreatingSubject] = useState(false);
   const [inlineSubName, setInlineSubName] = useState('');
   const [inlineSubIsPrivate, setInlineSubIsPrivate] = useState(false);
+  const [inlineSubSwitchToIt, setInlineSubSwitchToIt] = useState(false);
+  const [isSubmittingInlineSub, setIsSubmittingInlineSub] = useState(false);
 
-  // Material Source Selection (ticked material chips)
+  // Material Source Selection (ticked material chips) - persisted per subject
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>(() => {
-    const firstSubId = subjects[0]?.id || '';
-    const saved = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(`studybridge_selected_mats_${firstSubId}`) : null;
+    if (!activeSubjectId) return [];
+    const saved = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(`studybridge_selected_mats_${activeSubjectId}`) : null;
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -102,43 +132,89 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
         // fallback
       }
     }
-    const initialReady = materials.filter(m => m.subjectId === firstSubId && m.status === 'Ready');
+    const initialReady = materials.filter(m => m.subjectId === activeSubjectId && m.status === 'Ready');
     return initialReady.map(m => m.id);
   });
   const [combinedMaterialContent, setCombinedMaterialContent] = useState<string>('');
   const [isLoadingMaterials, setIsLoadingMaterials] = useState<boolean>(false);
-  const prevSubjectIdRef = useRef<string>(selectedSubjectId);
-  const prevReadyMatIdsRef = useRef<string[]>([]);
+  const prevSubjectIdRef = useRef<string>(activeSubjectId);
+  const prevReadyBySubjectRef = useRef<Record<string, string[]>>({});
 
-  // Default tick ready materials when subject changes, and auto-tick newly imported materials
+  // Restore saved material selections per subject without resetting when returning
   useEffect(() => {
-    const readyMaterials = materials.filter(m => m.subjectId === selectedSubjectId && m.status === 'Ready');
-    const readyIds = readyMaterials.map(m => m.id);
-
-    // If subject changed, reset to all ready materials
-    if (prevSubjectIdRef.current !== selectedSubjectId) {
-      prevSubjectIdRef.current = selectedSubjectId;
-      setSelectedMaterialIds(readyIds);
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem(`studybridge_selected_mats_${selectedSubjectId}`, JSON.stringify(readyIds));
-      }
-      prevReadyMatIdsRef.current = readyIds;
+    if (!activeSubjectId) {
+      setSelectedMaterialIds([]);
+      prevSubjectIdRef.current = '';
       return;
     }
 
-    // Auto-tick newly imported materials in the active subject
-    const newReadyIds = readyIds.filter(id => !prevReadyMatIdsRef.current.includes(id));
+    const readyMaterials = materials.filter(m => m.subjectId === activeSubjectId && m.status === 'Ready');
+    const readyIds = readyMaterials.map(m => m.id);
+    const storageKey = `studybridge_selected_mats_${activeSubjectId}`;
+    const savedRaw = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(storageKey) : null;
+
+    if (prevSubjectIdRef.current !== activeSubjectId) {
+      prevSubjectIdRef.current = activeSubjectId;
+      if (savedRaw !== null) {
+        try {
+          const parsed = JSON.parse(savedRaw);
+          if (Array.isArray(parsed)) {
+            setSelectedMaterialIds(parsed);
+            prevReadyBySubjectRef.current[activeSubjectId] = readyIds;
+            return;
+          }
+        } catch {
+          // ignore parse error
+        }
+      }
+      // First time selecting this subject in session: tick ready materials if available
+      if (readyIds.length > 0) {
+        setSelectedMaterialIds(readyIds);
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem(storageKey, JSON.stringify(readyIds));
+        }
+      } else {
+        setSelectedMaterialIds([]);
+      }
+      prevReadyBySubjectRef.current[activeSubjectId] = readyIds;
+      return;
+    }
+
+    // Same subject: if materials just loaded from Firestore and user had saved selections, ensure initialized
+    const prevReady = prevReadyBySubjectRef.current[activeSubjectId];
+    if (prevReady === undefined) {
+      if (savedRaw !== null) {
+        try {
+          const parsed = JSON.parse(savedRaw);
+          if (Array.isArray(parsed)) {
+            setSelectedMaterialIds(parsed);
+          }
+        } catch {
+          // ignore
+        }
+      } else if (readyIds.length > 0) {
+        setSelectedMaterialIds(readyIds);
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem(storageKey, JSON.stringify(readyIds));
+        }
+      }
+      prevReadyBySubjectRef.current[activeSubjectId] = readyIds;
+      return;
+    }
+
+    // Auto-tick only genuinely newly imported/ready materials for this subject
+    const newReadyIds = readyIds.filter(id => !prevReady.includes(id));
     if (newReadyIds.length > 0) {
       setSelectedMaterialIds(prev => {
         const updated = Array.from(new Set([...prev, ...newReadyIds]));
         if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem(`studybridge_selected_mats_${selectedSubjectId}`, JSON.stringify(updated));
+          sessionStorage.setItem(storageKey, JSON.stringify(updated));
         }
         return updated;
       });
     }
-    prevReadyMatIdsRef.current = readyIds;
-  }, [selectedSubjectId, materials]);
+    prevReadyBySubjectRef.current[activeSubjectId] = readyIds;
+  }, [activeSubjectId, materials]);
 
   // Instruction input (persisted in session)
   const [instructionText, setInstructionText] = useState<string>(() => sessionStorage.getItem('studybridge_instruction') || '');
@@ -237,8 +313,37 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
   const [materialsPage, setMaterialsPage] = useState<number>(1);
   const [deletingResultId, setDeletingResultId] = useState<string | null>(null);
   const [resultToDelete, setResultToDelete] = useState<string | null>(null);
-  const RESULTS_PER_PAGE = 5;
-  const MATERIALS_PER_PAGE = 6;
+  const [windowWidth, setWindowWidth] = useState<number>(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1280
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const materialsPerPage = getMaterialsPerPage(windowWidth);
+  const resultsPerPage = getResultsPerPage(windowWidth);
+
+  const subjectMaterials = materials.filter(m => m.subjectId === activeSubjectId);
+  const readySubjectMaterialsCount = subjectMaterials.filter(m => m.status === 'Ready').length;
+  const totalMaterialsPages = Math.max(1, Math.ceil(subjectMaterials.length / materialsPerPage));
+
+  const subjectResults = savedResults.filter(r => r.subjectId === activeSubjectId);
+  const filteredResults = activeFilter === 'All'
+    ? subjectResults
+    : subjectResults.filter(r => {
+        const rawType = (r.type || '').trim().toLowerCase();
+        if (activeFilter === 'Summary') return rawType === 'summary' || rawType === 'summarize';
+        if (activeFilter === 'Explanation') return rawType === 'explanation' || rawType === 'explain';
+        if (activeFilter === 'Quiz') return rawType === 'quiz';
+        if (activeFilter === 'Flashcards') return rawType === 'flashcards' || rawType === 'flashcard';
+        if (activeFilter === 'Answers') return rawType === 'answer' || rawType === 'custom';
+        return true;
+      });
+  const totalResultsPages = Math.max(1, Math.ceil(filteredResults.length / resultsPerPage));
 
   // Listen for toast messages from navigation (e.g. "Deleted" from ResultPage)
   useEffect(() => {
@@ -251,11 +356,43 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
     }
   }, [location.state]);
 
-  // Reset pagination when switching subject
+  // Reset pagination only when switching subject
   useEffect(() => {
     setResultsPage(1);
     setMaterialsPage(1);
-  }, [selectedSubjectId]);
+  }, [activeSubjectId]);
+
+  // Preserve page containing first visible material on resize & clamp when count shrinks
+  const prevMaterialsPerPageRef = useRef<number>(materialsPerPage);
+  useEffect(() => {
+    const prevPerPage = prevMaterialsPerPageRef.current;
+    if (prevPerPage !== materialsPerPage) {
+      prevMaterialsPerPageRef.current = materialsPerPage;
+      setMaterialsPage(prev => {
+        const firstVisibleIndex = (prev - 1) * prevPerPage;
+        const preservedPage = Math.floor(firstVisibleIndex / materialsPerPage) + 1;
+        return Math.max(1, Math.min(preservedPage, totalMaterialsPages));
+      });
+    } else if (materialsPage > totalMaterialsPages) {
+      setMaterialsPage(totalMaterialsPages);
+    }
+  }, [materialsPerPage, totalMaterialsPages, materialsPage]);
+
+  // Preserve page containing first visible result on resize & move to previous page if last item deleted
+  const prevResultsPerPageRef = useRef<number>(resultsPerPage);
+  useEffect(() => {
+    const prevPerPage = prevResultsPerPageRef.current;
+    if (prevPerPage !== resultsPerPage) {
+      prevResultsPerPageRef.current = resultsPerPage;
+      setResultsPage(prev => {
+        const firstVisibleIndex = (prev - 1) * prevPerPage;
+        const preservedPage = Math.floor(firstVisibleIndex / resultsPerPage) + 1;
+        return Math.max(1, Math.min(preservedPage, totalResultsPages));
+      });
+    } else if (resultsPage > totalResultsPages) {
+      setResultsPage(totalResultsPages);
+    }
+  }, [resultsPerPage, totalResultsPages, resultsPage]);
 
   const handleDeleteResult = (e: React.MouseEvent, resId: string) => {
     e.stopPropagation();
@@ -281,17 +418,14 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
   // Sync selected material from navigation
   useEffect(() => {
     if (selectedMaterial) {
-      setSelectedSubjectId(selectedMaterial.subjectId);
+      setActiveSubjectId(selectedMaterial.subjectId, true);
       setSelectedMaterialIds([selectedMaterial.id]);
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(`studybridge_selected_mats_${selectedMaterial.subjectId}`, JSON.stringify([selectedMaterial.id]));
+      }
+      clearSelectedMaterial();
     }
   }, [selectedMaterial]);
-
-  // Keep selectedSubjectId valid
-  useEffect(() => {
-    if (subjects.length > 0 && !subjects.some(s => s.id === selectedSubjectId)) {
-      setSelectedSubjectId(subjects[0].id);
-    }
-  }, [subjects, selectedSubjectId]);
 
   // Fetch and combine contents of ticked materials
   useEffect(() => {
@@ -339,9 +473,6 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
     fetchTickedContents();
   }, [selectedMaterialIds, materials]);
 
-  const activeSubject = subjects.find(s => s.id === selectedSubjectId);
-  const subjectMaterials = materials.filter(m => m.subjectId === selectedSubjectId);
-
   // Effective text to be used by AI: ticked materials combined + optional quick text
   const effectiveText = [combinedMaterialContent, instructionText.trim()].filter(Boolean).join('\n\n');
 
@@ -363,8 +494,8 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
     if (mat && mat.status !== 'Ready') return; // Materials not ready cannot be ticked
     setSelectedMaterialIds(prev => {
       const next = prev.includes(matId) ? prev.filter(id => id !== matId) : [...prev, matId];
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem(`studybridge_selected_mats_${selectedSubjectId}`, JSON.stringify(next));
+      if (typeof sessionStorage !== 'undefined' && activeSubjectId) {
+        sessionStorage.setItem(`studybridge_selected_mats_${activeSubjectId}`, JSON.stringify(next));
       }
       return next;
     });
@@ -372,22 +503,26 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
   const handleInlineSubjectCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inlineSubName.trim()) return;
+    if (!inlineSubName.trim() || isSubmittingInlineSub) return;
+    setIsSubmittingInlineSub(true);
     try {
       const created = await onAddSubject({
         name: inlineSubName.trim(),
-        color: 'from-blue-600 to-indigo-600',
+        color: DEFAULT_SUBJECT_COLOR,
         icon: 'BookOpen',
         isPrivate: isDeviceAiAvailable ? inlineSubIsPrivate : false
       });
+      if (inlineSubSwitchToIt && created?.id) {
+        setActiveSubjectId(created.id, true);
+      }
       setInlineSubName('');
       setInlineSubIsPrivate(false);
+      setInlineSubSwitchToIt(false);
       setIsInlineCreatingSubject(false);
-      if (created?.id) {
-        setSelectedSubjectId(created.id);
-      }
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSubmittingInlineSub(false);
     }
   };
 
@@ -454,15 +589,16 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
       if (controller.signal.aborted) return;
 
-      const fullResult = { ...result, actionType };
+      const cleanContent = stripGreetingsAndOffers(result.response);
+      const fullResult = { ...result, response: cleanContent, actionType };
       setCurrentResult(fullResult);
 
       const interaction: AIInteraction = {
         id: 'int-' + Date.now(),
-        subjectId: selectedSubjectId || 'sub-general',
+        subjectId: activeSubjectId || 'sub-general',
         actionType,
         prompt: actionType === 'answer' ? instructionText.trim() : (effectiveText.substring(0, 120) + (effectiveText.length > 120 ? '...' : '')),
-        response: result.response,
+        response: cleanContent,
         route: result.route,
         inferenceModeUsed: result.inferenceModeUsed,
         routingReason: result.routingReason,
@@ -479,7 +615,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
       // Save to Firestore saved results for all valid AI actions
       if (['summarize', 'explain', 'quiz', 'flashcards', 'answer'].includes(actionType)) {
-        if (!result.response || !result.response.trim()) {
+        if (!cleanContent || !cleanContent.trim()) {
           // Do not save empty answers
           return;
         }
@@ -490,18 +626,19 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
           actionType === 'quiz' ? 'quiz' :
           actionType === 'flashcards' ? 'flashcards' : 'answer';
 
+        const nowTs = Date.now();
         const firstTicked = materials.find(m => selectedMaterialIds.includes(m.id));
         const sourceName = explainFocus || instructionText || firstTicked?.title || activeSubject?.name || 'Study Material';
-        const title = computeTitle(normalizedType, result.response, result.quizData, result.flashcardData, sourceName, savedResults);
-        const preview = computePreview({ type: normalizedType, content: result.response, quizData: result.quizData, flashcardData: result.flashcardData });
+        const title = computeTitle(normalizedType, cleanContent, result.quizData, result.flashcardData, sourceName, subjectResults, nowTs);
+        const preview = computePreview({ type: normalizedType, content: cleanContent, quizData: result.quizData, flashcardData: result.flashcardData });
 
         if (auth.currentUser) {
           const resId = await addResultFirestore(auth.currentUser.uid, {
-            subjectId: selectedSubjectId,
+            subjectId: activeSubjectId,
             title,
             preview,
             type: normalizedType as any,
-            content: result.response,
+            content: cleanContent,
             prompt: instructionText.trim() || undefined,
             materialIds: selectedMaterialIds,
             route: result.route,
@@ -509,7 +646,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
             routingReason: result.routingReason,
             latencyMs: result.latencyMs,
             ttftMs: result.ttftMs,
-            timestamp: Date.now(),
+            timestamp: nowTs,
             settings: generationSettings,
             level: actionType === 'explain' ? explainLevel : undefined,
             focus: actionType === 'explain' ? explainFocus : undefined,
@@ -517,6 +654,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
             ...(result.flashcardData ? { flashcardData: result.flashcardData } : {})
           });
           setLatestSavedResultId(resId);
+          setResultsPage(1);
           setCurrentResult(prev => prev ? { ...prev, id: resId, preview } : null);
 
           showToast(`${title} saved`);
@@ -566,7 +704,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
       await saveMaterialWithChunks(
         auth.currentUser.uid,
         {
-          subjectId: selectedSubjectId,
+          subjectId: activeSubjectId,
           title: noteTitle,
           pageCount: 1,
           hasImages: false
@@ -602,10 +740,10 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
   }
 
   return (
-    <div className="max-w-[960px] mx-auto px-4 sm:px-6 py-8 space-y-6 animate-fadeIn text-[var(--text)]">
+    <div className="max-w-[960px] mx-auto px-4 sm:px-6 py-8 space-y-6 animate-fadeIn text-[var(--text)] overflow-x-hidden">
       {/* Title & Introduction */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0">
           <h2 className="text-2xl font-bold tracking-tight text-[var(--text)]">Study Desk</h2>
           <p className="text-sm text-[var(--muted)]">
             Select materials from your subject to analyze, summarize, explain simply, or generate practice tests.
@@ -614,9 +752,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
         <button
           onClick={() => setIsManageSubjectsOpen(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] text-xs font-medium transition-colors shadow-sm self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] text-xs font-medium transition-colors shadow-sm self-start sm:self-auto whitespace-nowrap shrink-0"
         >
-          <Settings className="w-3.5 h-3.5 text-[var(--muted)]" />
+          <Settings className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />
           Manage Subjects
         </button>
       </div>
@@ -624,54 +762,71 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
       {/* Subject Switcher Bar with always-visible "+ New subject" */}
       <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-2xl shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-[var(--text-secondary)]">Active Subject:</span>
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-xs font-semibold text-[var(--text-secondary)] whitespace-nowrap">Active Subject:</span>
             
-            <select
-              value={selectedSubjectId}
-              onChange={(e) => {
-                if (e.target.value === '__NEW__') {
-                  setIsInlineCreatingSubject(true);
-                } else {
-                  setSelectedSubjectId(e.target.value);
-                  setSelectedMaterialIds([]);
-                }
-              }}
-              className="bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3.5 py-2 text-xs text-[var(--text)] focus:outline-none focus:border-[var(--primary)] font-semibold cursor-pointer shadow-sm"
+            <div
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-colors shadow-sm max-w-full min-w-0 ${
+                activeSubject ? '' : 'bg-[var(--input-bg)] border-[var(--input-border)]'
+              }`}
+              style={activeSubject ? activeSubjectTheme.selectorStyle : undefined}
             >
-              {subjects.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name} {s.isPrivate ? '(Private: On-Device)' : ''}
-                </option>
-              ))}
-              <option value="__NEW__" className="text-[var(--primary-accent)] font-bold">+ New subject</option>
-            </select>
+              <span
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${activeSubject ? '' : 'bg-[var(--muted)]'}`}
+                style={activeSubject ? activeSubjectTheme.dotStyle : undefined}
+              />
+              <select
+                value={activeSubjectId}
+                onChange={(e) => {
+                  if (e.target.value === '__NEW__') {
+                    setIsInlineCreatingSubject(true);
+                  } else {
+                    setActiveSubjectId(e.target.value, true);
+                  }
+                }}
+                aria-label="Active Subject"
+                className={`bg-transparent text-xs focus:outline-none font-semibold cursor-pointer pr-1 min-w-0 max-w-full truncate ${
+                  activeSubject ? '' : 'text-[var(--text)]'
+                }`}
+                style={activeSubject ? activeSubjectTheme.selectorTextStyle : undefined}
+              >
+                {!activeSubjectId && (
+                  <option value="" disabled>Select a subject...</option>
+                )}
+                {subjects.map(s => (
+                  <option key={s.id} value={s.id} className="bg-[var(--surface)] text-[var(--text)]">
+                    {s.name} {s.isPrivate ? '(Private: On-Device)' : ''}
+                  </option>
+                ))}
+                <option value="__NEW__" className="bg-[var(--surface)] text-[var(--primary-accent)] font-bold">+ New subject</option>
+              </select>
+            </div>
 
             <button
               onClick={() => setIsInlineCreatingSubject(prev => !prev)}
-              className="px-2.5 py-2 rounded-xl bg-[var(--primary-soft-bg)] text-[var(--primary-accent)] hover:opacity-90 text-xs font-medium flex items-center gap-1 border border-[var(--primary-soft-border)] transition-colors"
+              className="px-2.5 py-2 rounded-xl bg-[var(--primary-soft-bg)] text-[var(--primary-accent)] hover:opacity-90 text-xs font-medium flex items-center gap-1 border border-[var(--primary-soft-border)] transition-colors whitespace-nowrap shrink-0"
               title="Add subject without leaving page"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden sm:inline">New Subject</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {materialPages.some(p => !!p.image) && (
               <button
                 type="button"
                 onClick={() => setShowVisualsModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1 bg-[var(--accent-flashcards-bg)] text-[var(--accent-flashcards)] border border-[var(--accent-flashcards-border)] rounded-full text-xs font-semibold hover:opacity-90 transition-colors shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1 bg-[var(--accent-flashcards-bg)] text-[var(--accent-flashcards)] border border-[var(--accent-flashcards-border)] rounded-full text-xs font-semibold hover:opacity-90 transition-colors shadow-sm whitespace-nowrap shrink-0"
               >
-                <Eye className="w-3.5 h-3.5" />
+                <Eye className="w-3.5 h-3.5 shrink-0" />
                 View Diagrams ({materialPages.filter(p => !!p.image).length})
               </button>
             )}
             
             {activeSubject?.isPrivate && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--warning)] bg-[var(--warning-bg)] border border-[var(--warning-border)] px-2.5 py-1 rounded-full">
-                <Lock className="w-3 h-3" /> Private Subject
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--warning)] bg-[var(--warning-bg)] border border-[var(--warning-border)] px-2.5 py-1 rounded-full whitespace-nowrap">
+                <Lock className="w-3 h-3 shrink-0" /> Private Subject
               </span>
             )}
           </div>
@@ -693,7 +848,20 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
+              <label 
+                className="flex items-center gap-1 text-xs select-none cursor-pointer"
+                title="Switch active subject to this new subject"
+              >
+                <input
+                  type="checkbox"
+                  checked={inlineSubSwitchToIt}
+                  onChange={(e) => setInlineSubSwitchToIt(e.target.checked)}
+                  className="rounded accent-[var(--primary)] w-3 h-3 cursor-pointer"
+                />
+                <span className="text-[11px] text-[var(--text-secondary)]">Switch to it</span>
+              </label>
+
               <label 
                 className={`flex items-center gap-1 text-xs select-none ${!isDeviceAiAvailable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 title={!isDeviceAiAvailable ? "Private subjects require on-device AI, which is not available in this browser. For offline/private AI, use Chrome on a desktop computer." : "Keep this subject private (runs only on-device)"}
@@ -712,9 +880,10 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-lg text-xs font-medium shadow"
+                disabled={isSubmittingInlineSub || !inlineSubName.trim()}
+                className="px-3 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-50 text-[var(--primary-text)] rounded-lg text-xs font-medium shadow"
               >
-                Create
+                {isSubmittingInlineSub ? 'Creating...' : 'Create'}
               </button>
               <button
                 type="button"
@@ -729,31 +898,33 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
         {/* Source Material Selection Chips */}
         <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-              {selectedMaterialIds.length} of {subjectMaterials.filter(m => m.status === 'Ready').length} sources selected
+              {selectedMaterialIds.length} of {readySubjectMaterialsCount} sources selected
             </span>
-            <div className="flex gap-3">
+            <div className="flex gap-3 shrink-0">
               <button
+                type="button"
                 onClick={() => {
                   const readyIds = subjectMaterials.filter(m => m.status === 'Ready').map(m => m.id);
                   setSelectedMaterialIds(readyIds);
-                  if (typeof sessionStorage !== 'undefined') {
-                    sessionStorage.setItem(`studybridge_selected_mats_${selectedSubjectId}`, JSON.stringify(readyIds));
+                  if (typeof sessionStorage !== 'undefined' && activeSubjectId) {
+                    sessionStorage.setItem(`studybridge_selected_mats_${activeSubjectId}`, JSON.stringify(readyIds));
                   }
                 }}
-                className="text-[11px] text-[var(--primary-accent)] hover:underline"
+                className="text-[11px] text-[var(--primary-accent)] hover:underline whitespace-nowrap shrink-0 cursor-pointer"
               >
                 Select all
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setSelectedMaterialIds([]);
-                  if (typeof sessionStorage !== 'undefined') {
-                    sessionStorage.setItem(`studybridge_selected_mats_${selectedSubjectId}`, JSON.stringify([]));
+                  if (typeof sessionStorage !== 'undefined' && activeSubjectId) {
+                    sessionStorage.setItem(`studybridge_selected_mats_${activeSubjectId}`, JSON.stringify([]));
                   }
                 }}
-                className="text-[11px] text-[var(--muted)] hover:text-[var(--text)] underline"
+                className="text-[11px] text-[var(--muted)] hover:text-[var(--text)] underline whitespace-nowrap shrink-0 cursor-pointer"
               >
                 Clear
               </button>
@@ -767,19 +938,25 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
               </p>
               <button
                 onClick={() => navigate('/materials')}
-                className="text-xs text-[var(--primary-accent)] font-semibold hover:underline"
+                className="text-xs text-[var(--primary-accent)] font-semibold hover:underline whitespace-nowrap"
               >
                 Import materials in Library &rarr;
               </button>
             </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {subjectMaterials
-                  .slice((materialsPage - 1) * MATERIALS_PER_PAGE, materialsPage * MATERIALS_PER_PAGE)
-                  .map((mat) => {
+          ) : (() => {
+            const currentMaterialsPage = Math.min(materialsPage, totalMaterialsPages);
+            const paginatedMaterials = subjectMaterials.slice(
+              (currentMaterialsPage - 1) * materialsPerPage,
+              currentMaterialsPage * materialsPerPage
+            );
+
+            return (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2.5">
+                  {paginatedMaterials.map((mat) => {
                     const isSelected = selectedMaterialIds.includes(mat.id);
                     const isReady = mat.status === 'Ready';
+                    const chipSubjectTheme = getSubjectColorTheme(subjects.find(s => s.id === mat.subjectId) || activeSubject, isDark);
                     return (
                       <button
                         key={mat.id}
@@ -787,57 +964,65 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                         disabled={!isReady}
                         title={!isReady ? `${mat.title} (${mat.status || 'Processing'})` : mat.title}
                         onClick={() => handleToggleMaterial(mat.id)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
+                        style={isReady && isSelected ? chipSubjectTheme.chipSelectedStyle : undefined}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all border min-w-0 w-full ${
                           !isReady
                             ? 'opacity-50 cursor-not-allowed bg-[var(--surface-raised)] text-[var(--muted)] border-dashed border-[var(--border)]'
                             : isSelected
-                            ? 'bg-[var(--primary)] text-[var(--primary-text)] border-[var(--primary)] shadow-md'
+                            ? 'shadow-md'
                             : 'bg-[var(--surface-raised)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--hover)]'
                         }`}
                       >
-                        <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${isSelected && isReady ? 'text-[var(--primary-text)]' : 'text-[var(--muted)]'}`} />
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${isSelected && isReady ? 'bg-white' : ''}`}
+                          style={!(isSelected && isReady) ? chipSubjectTheme.dotStyle : undefined}
+                        />
+                        <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${isSelected && isReady ? 'text-white' : 'text-[var(--muted)]'}`} />
                         <span className="truncate flex-1 text-left">{mat.title}</span>
                         {!isReady && (
-                          <span className="text-[10px] text-[var(--muted)] shrink-0 italic">
+                          <span className="text-[10px] text-[var(--muted)] shrink-0 italic whitespace-nowrap">
                             ({mat.status || 'Extracting'})
                           </span>
                         )}
                       </button>
                     );
                   })}
-              </div>
-              {subjectMaterials.length > MATERIALS_PER_PAGE && (
-                <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)] text-xs">
-                  <span className="text-[11px] text-[var(--muted)]">
-                    Showing {(materialsPage - 1) * MATERIALS_PER_PAGE + 1}–{Math.min(materialsPage * MATERIALS_PER_PAGE, subjectMaterials.length)} of {subjectMaterials.length} materials
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      disabled={materialsPage === 1}
-                      onClick={() => setMaterialsPage(prev => Math.max(1, prev - 1))}
-                      className="px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 text-xs font-medium hover:bg-[var(--hover)] transition-colors shadow-xs"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-xs font-medium text-[var(--text-secondary)] px-1">
-                      {materialsPage} / {Math.ceil(subjectMaterials.length / MATERIALS_PER_PAGE)}
-                    </span>
-                    <button
-                      disabled={materialsPage >= Math.ceil(subjectMaterials.length / MATERIALS_PER_PAGE)}
-                      onClick={() => setMaterialsPage(prev => Math.min(Math.ceil(subjectMaterials.length / MATERIALS_PER_PAGE), prev + 1))}
-                      className="px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 text-xs font-medium hover:bg-[var(--hover)] transition-colors shadow-xs"
-                    >
-                      Next
-                    </button>
-                  </div>
                 </div>
-              )}
-            </div>
-          )}
+                {totalMaterialsPages > 1 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--border-subtle)] text-xs">
+                    <span className="text-[11px] text-[var(--muted)] whitespace-nowrap">
+                      {selectedMaterialIds.length} of {subjectMaterials.length} selected
+                    </span>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        type="button"
+                        disabled={currentMaterialsPage <= 1}
+                        onClick={() => setMaterialsPage(prev => Math.max(1, prev - 1))}
+                        className="px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium hover:bg-[var(--hover)] transition-colors shadow-xs whitespace-nowrap shrink-0 cursor-pointer"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-[11px] font-medium text-[var(--text-secondary)] whitespace-nowrap px-1">
+                        Page {currentMaterialsPage} of {totalMaterialsPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={currentMaterialsPage >= totalMaterialsPages}
+                        onClick={() => setMaterialsPage(prev => Math.min(totalMaterialsPages, prev + 1))}
+                        className="px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium hover:bg-[var(--hover)] transition-colors shadow-xs whitespace-nowrap shrink-0 cursor-pointer"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {isLoadingMaterials && (
             <div className="flex items-center gap-1.5 text-xs text-[var(--primary-accent)] pt-1">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
               <span>Loading text & diagrams from selected sources...</span>
             </div>
           )}
@@ -848,16 +1033,16 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Column: Controls, Quick Text, AI Actions */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="lg:col-span-5 space-y-4 min-w-0">
           <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-5 shadow-sm space-y-4">
             
             {/* Shared Instruction Field */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2">
                 <label className="text-xs font-semibold text-[var(--text-secondary)]">
                   Tell the AI what you need (optional)
                 </label>
-                <span className={`text-[10px] ${instructionText.length > 500 ? 'text-[var(--danger)]' : 'text-[var(--muted)]'}`}>
+                <span className={`text-[10px] shrink-0 whitespace-nowrap ${instructionText.length > 500 ? 'text-[var(--danger)]' : 'text-[var(--muted)]'}`}>
                   {instructionText.length}/500
                 </span>
               </div>
@@ -872,14 +1057,14 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                 <button
                   onClick={() => handleAction('answer')}
                   disabled={isGenerating || selectedMaterialIds.length === 0 || !instructionText.trim()}
-                  className="flex-1 flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all disabled:opacity-50 shadow-sm"
+                  className="flex-1 flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] text-xs font-bold transition-all disabled:opacity-50 shadow-sm whitespace-nowrap"
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4 shrink-0" />
                   Ask AI
                 </button>
                 <button
                   onClick={() => setInstructionText('')}
-                  className="p-3 rounded-xl bg-[var(--surface-raised)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--hover-strong)] border border-[var(--border)] transition-colors"
+                  className="p-3 rounded-xl bg-[var(--surface-raised)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--hover-strong)] border border-[var(--border)] transition-colors shrink-0"
                   title="Clear instruction"
                 >
                   <X className="w-4 h-4" />
@@ -898,7 +1083,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                     key={lvl}
                     type="button"
                     onClick={() => setExplainLevel(lvl)}
-                    className={`py-1.5 px-2 rounded-xl text-xs font-medium text-center transition-all ${
+                    className={`py-1.5 px-2 rounded-xl text-xs font-medium text-center transition-all whitespace-nowrap ${
                       explainLevel === lvl
                         ? 'bg-[var(--primary)] text-[var(--primary-text)] shadow-sm'
                         : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--border-strong)]'
@@ -944,14 +1129,14 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-2">
                 <button
                   onClick={() => handleAction('explain')}
                   disabled={isGenerating || selectedMaterialIds.length === 0 || !effectiveText.trim() || (activeSubject?.isPrivate && !isDeviceAiAvailable)}
                   title={activeSubject?.isPrivate && !isDeviceAiAvailable ? "Private subjects require on-device AI, which is unavailable in this browser." : undefined}
-                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
+                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm whitespace-nowrap"
                 >
-                  <Sparkles className="w-4 h-4 text-[var(--accent-explanation)] group-hover:scale-110 transition-transform" />
+                  <Sparkles className="w-4 h-4 text-[var(--accent-explanation)] group-hover:scale-110 transition-transform shrink-0" />
                   Explain Simply
                 </button>
 
@@ -959,9 +1144,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   onClick={() => handleAction('summarize')}
                   disabled={isGenerating || selectedMaterialIds.length === 0 || !effectiveText.trim() || (activeSubject?.isPrivate && !isDeviceAiAvailable)}
                   title={activeSubject?.isPrivate && !isDeviceAiAvailable ? "Private subjects require on-device AI, which is unavailable in this browser." : undefined}
-                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
+                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm whitespace-nowrap"
                 >
-                  <BookOpen className="w-4 h-4 text-[var(--accent-summary)] group-hover:scale-110 transition-transform" />
+                  <BookOpen className="w-4 h-4 text-[var(--accent-summary)] group-hover:scale-110 transition-transform shrink-0" />
                   Summarize
                 </button>
 
@@ -969,9 +1154,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   onClick={() => handleAction('quiz')}
                   disabled={isGenerating || selectedMaterialIds.length === 0 || !effectiveText.trim() || (activeSubject?.isPrivate && !isDeviceAiAvailable)}
                   title={activeSubject?.isPrivate && !isDeviceAiAvailable ? "Private subjects require on-device AI, which is unavailable in this browser." : undefined}
-                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
+                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm whitespace-nowrap"
                 >
-                  <HelpCircle className="w-4 h-4 text-[var(--accent-quiz)] group-hover:scale-110 transition-transform" />
+                  <HelpCircle className="w-4 h-4 text-[var(--accent-quiz)] group-hover:scale-110 transition-transform shrink-0" />
                   5-Q Quiz Arena
                 </button>
 
@@ -979,9 +1164,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                   onClick={() => handleAction('flashcards')}
                   disabled={isGenerating || selectedMaterialIds.length === 0 || !effectiveText.trim() || (activeSubject?.isPrivate && !isDeviceAiAvailable)}
                   title={activeSubject?.isPrivate && !isDeviceAiAvailable ? "Private subjects require on-device AI, which is unavailable in this browser." : undefined}
-                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm"
+                  className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--hover-strong)] border border-[var(--border)] text-xs font-medium text-[var(--text)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group shadow-sm whitespace-nowrap"
                 >
-                  <Layers className="w-4 h-4 text-[var(--accent-flashcards)] group-hover:scale-110 transition-transform" />
+                  <Layers className="w-4 h-4 text-[var(--accent-flashcards)] group-hover:scale-110 transition-transform shrink-0" />
                   Flashcards
                 </button>
               </div>
@@ -990,7 +1175,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
         </div>
 
         {/* Right Column: Fixed-Height AI Output Panel & Latest Result Card */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-7 space-y-4 min-w-0">
           <div className="bg-[var(--surface)] border-2 border-[var(--border)] rounded-3xl p-6 sm:p-7 shadow-sm space-y-4 flex flex-col">
             
             {/* Header Status Bar */}
@@ -1029,9 +1214,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                 <p className="text-xs text-[var(--danger)] leading-relaxed">{errorMessage}</p>
                 <button
                   onClick={() => handleAction(lastActionType!)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--danger-solid)] hover:bg-[var(--danger-solid-hover)] text-[var(--primary-text)] rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--danger-solid)] hover:bg-[var(--danger-solid-hover)] text-[var(--primary-text)] rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" /> Retry
+                  <RefreshCw className="w-3.5 h-3.5 shrink-0" /> Retry
                 </button>
               </div>
             )}
@@ -1069,7 +1254,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                       <button
                         type="button"
                         onClick={handleCancelGeneration}
-                        className="px-2 py-0.5 rounded-md border border-[var(--border)] bg-[var(--surface)] text-[11px] font-medium text-[var(--text-secondary)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] hover:border-[var(--danger-border)] transition-colors cursor-pointer"
+                        className="px-2 py-0.5 rounded-md border border-[var(--border)] bg-[var(--surface)] text-[11px] font-medium text-[var(--text-secondary)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] hover:border-[var(--danger-border)] transition-colors cursor-pointer whitespace-nowrap"
                       >
                         Cancel
                       </button>
@@ -1100,7 +1285,7 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                             : `Receiving quiz data (${currentResult.response.length} chars)...`;
                         })()
                       ) : (
-                        currentResult.response
+                        stripGreetingsAndOffers(currentResult.response)
                           .replace(/[*#$`_~[\]()>{}]/g, '')
                           .split('\n')
                           .filter(Boolean)
@@ -1160,11 +1345,11 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                     {(() => {
                       const latestRes = latestSavedResultId ? savedResults.find(r => r.id === latestSavedResultId) : null;
                       if (latestRes) {
-                        return getDisplayTitle(latestRes, savedResults, activeSubject?.name);
+                        return getDisplayTitle(latestRes, subjectResults, activeSubject?.name);
                       }
                       const firstTicked = materials.find(m => selectedMaterialIds.includes(m.id));
                       const src = explainFocus || instructionText || firstTicked?.title || activeSubject?.name || 'Study Material';
-                      return computeTitle(currentResult.actionType, currentResult.response, currentResult.quizData, currentResult.flashcardData, src, savedResults);
+                      return computeTitle(currentResult.actionType, currentResult.response, currentResult.quizData, currentResult.flashcardData, src, subjectResults);
                     })()}
                   </h3>
 
@@ -1181,10 +1366,10 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                     {(currentResult.actionType === 'summarize' || currentResult.actionType === 'explain') && (
                       <button
                         onClick={() => handleCopyText(currentResult.response, 'current')}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] text-xs font-medium cursor-pointer min-h-[36px]"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] text-xs font-medium cursor-pointer min-h-[36px] whitespace-nowrap"
                         title="Copy content"
                       >
-                        {copiedResultId === 'current' ? <Check className="w-3.5 h-3.5 text-[var(--success)]" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedResultId === 'current' ? <Check className="w-3.5 h-3.5 text-[var(--success)] shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
                         <span>{copiedResultId === 'current' ? 'Copied' : 'Copy'}</span>
                       </button>
                     )}
@@ -1229,21 +1414,10 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
 
           {/* Saved Result Cards for Active Subject */}
           {(() => {
-            const subjectResults = savedResults.filter(r => r.subjectId === selectedSubjectId);
-            const filteredResults = activeFilter === 'All' 
-              ? subjectResults 
-              : subjectResults.filter(r => {
-                  if (activeFilter === 'Summary') return r.type === 'summary';
-                  if (activeFilter === 'Explanation') return r.type === 'explanation';
-                  if (activeFilter === 'Quiz') return r.type === 'quiz';
-                  if (activeFilter === 'Flashcards') return r.type === 'flashcards';
-                  if (activeFilter === 'Answers') return r.type === 'answer' || (r.type as string) === 'custom';
-                  return true;
-                });
             if (subjectResults.length === 0) return null;
-            const totalResultsPages = Math.max(1, Math.ceil(filteredResults.length / RESULTS_PER_PAGE));
             const currentPage = Math.min(resultsPage, totalResultsPages);
-            const paginatedResults = filteredResults.slice((currentPage - 1) * RESULTS_PER_PAGE, currentPage * RESULTS_PER_PAGE);
+            const paginatedResults = filteredResults.slice((currentPage - 1) * resultsPerPage, currentPage * resultsPerPage);
+            const paginationItems = getPaginationItems(currentPage, totalResultsPages);
 
             return (
               <div className="space-y-3 pt-2">
@@ -1252,8 +1426,9 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                     {(['All', 'Summary', 'Explanation', 'Quiz', 'Flashcards', 'Answers'] as const).map(filter => (
                       <button
                         key={filter}
+                        type="button"
                         onClick={() => { setActiveFilter(filter); setResultsPage(1); }}
-                        className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
+                        className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                           activeFilter === filter 
                             ? 'bg-[var(--text)] text-[var(--bg-app)]' 
                             : 'bg-[var(--surface-raised)] text-[var(--muted)] hover:bg-[var(--hover-strong)] hover:text-[var(--text)]'
@@ -1263,200 +1438,203 @@ export const StudyDesk: React.FC<StudyDeskProps> = ({
                       </button>
                     ))}
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] block">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] whitespace-nowrap">
                     {activeFilter} Results ({filteredResults.length})
                   </span>
-
-                  {totalResultsPages > 1 && (
-                    <div className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
-                      <span className="text-[11px] text-[var(--muted)] mr-1">
-                        Page {currentPage} of {totalResultsPages}
-                      </span>
-                      <button
-                        onClick={() => setResultsPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage <= 1}
-                        className="px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--hover)] transition-colors inline-flex items-center gap-1 shadow-xs"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                        Prev
-                      </button>
-                      <button
-                        onClick={() => setResultsPage(p => Math.min(totalResultsPages, p + 1))}
-                        disabled={currentPage >= totalResultsPages}
-                        className="px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--hover)] transition-colors inline-flex items-center gap-1 shadow-xs"
-                      >
-                        Next
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {paginatedResults.map((res) => {
-                    const label = getRouteLabel(res.route, { latencyMs: res.latencyMs, ttftMs: res.ttftMs });
-                    const isDeleting = deletingResultId === res.id;
+                {filteredResults.length === 0 ? (
+                  <div className="min-h-[364px] rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] flex flex-col items-center justify-center p-6 text-center space-y-1.5">
+                    <p className="text-xs font-semibold text-[var(--text-secondary)]">
+                      No {activeFilter.toLowerCase()} results yet
+                    </p>
+                    <p className="text-[11px] text-[var(--muted)]">
+                      Switch to All or generate a new result using the Study Desk controls.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-[364px] content-start">
+                    {paginatedResults.map((res) => {
+                      const isDeleting = deletingResultId === res.id;
 
-                    // Normalize type and assign distinct color tokens + icons
-                    const rawType = (res.type || '').trim().toLowerCase();
-                    const isSummary = rawType === 'summary' || rawType === 'summarize';
-                    const isExplanation = rawType === 'explanation' || rawType === 'explain';
-                    const isQuiz = rawType === 'quiz';
-                    const isFlashcards = rawType === 'flashcards' || rawType === 'flashcard';
-                    const isAnswer = rawType === 'answer' || rawType === 'custom';
+                      // Normalize type and assign distinct color tokens + icons
+                      const rawType = (res.type || '').trim().toLowerCase();
+                      const isSummary = rawType === 'summary' || rawType === 'summarize';
+                      const isExplanation = rawType === 'explanation' || rawType === 'explain';
+                      const isQuiz = rawType === 'quiz';
+                      const isFlashcards = rawType === 'flashcards' || rawType === 'flashcard';
 
-                    const typeName = isSummary ? 'Summary' : isExplanation ? 'Explanation' : isQuiz ? 'Quiz' : isFlashcards ? 'Flashcards' : 'Answer';
-                    const badgeColorClass = isSummary 
-                      ? 'bg-[var(--accent-summary-bg)] text-[var(--accent-summary)] border-[var(--accent-summary-border)]' 
-                      : isExplanation 
-                      ? 'bg-[var(--accent-explanation-bg)] text-[var(--accent-explanation)] border-[var(--accent-explanation-border)]' 
-                      : isQuiz 
-                      ? 'bg-[var(--accent-quiz-bg)] text-[var(--accent-quiz)] border-[var(--accent-quiz-border)]' 
-                      : isFlashcards
-                      ? 'bg-[var(--accent-flashcards-bg)] text-[var(--accent-flashcards)] border-[var(--accent-flashcards-border)]'
-                      : 'bg-[var(--accent-answer-bg)] text-[var(--accent-answer)] border-[var(--accent-answer-border)]';
+                      const typeName = isSummary ? 'Summary' : isExplanation ? 'Explanation' : isQuiz ? 'Quiz' : isFlashcards ? 'Flashcards' : 'Answer';
+                      const badgeColorClass = isSummary 
+                        ? 'bg-[var(--accent-summary-bg)] text-[var(--accent-summary)] border-[var(--accent-summary-border)]' 
+                        : isExplanation 
+                        ? 'bg-[var(--accent-explanation-bg)] text-[var(--accent-explanation)] border-[var(--accent-explanation-border)]' 
+                        : isQuiz 
+                        ? 'bg-[var(--accent-quiz-bg)] text-[var(--accent-quiz)] border-[var(--accent-quiz-border)]' 
+                        : isFlashcards
+                        ? 'bg-[var(--accent-flashcards-bg)] text-[var(--accent-flashcards)] border-[var(--accent-flashcards-border)]'
+                        : 'bg-[var(--accent-answer-bg)] text-[var(--accent-answer)] border-[var(--accent-answer-border)]';
 
-                    const typeIcon = isSummary 
-                      ? <BookOpen className="w-3 h-3 text-[var(--accent-summary)] shrink-0" />
-                      : isExplanation 
-                      ? <Sparkles className="w-3 h-3 text-[var(--accent-explanation)] shrink-0" />
-                      : isQuiz 
-                      ? <HelpCircle className="w-3 h-3 text-[var(--accent-quiz)] shrink-0" />
-                      : isFlashcards
-                      ? <Layers className="w-3 h-3 text-[var(--accent-flashcards)] shrink-0" />
-                      : <HelpCircle className="w-3 h-3 text-[var(--accent-answer)] shrink-0" />;
+                      const typeIcon = isSummary 
+                        ? <BookOpen className="w-3 h-3 text-[var(--accent-summary)] shrink-0" />
+                        : isExplanation 
+                        ? <Sparkles className="w-3 h-3 text-[var(--accent-explanation)] shrink-0" />
+                        : isQuiz 
+                        ? <HelpCircle className="w-3 h-3 text-[var(--accent-quiz)] shrink-0" />
+                        : isFlashcards
+                        ? <Layers className="w-3 h-3 text-[var(--accent-flashcards)] shrink-0" />
+                        : <HelpCircle className="w-3 h-3 text-[var(--accent-answer)] shrink-0" />;
 
-                    // Real titles & previews via getDisplayTitle and computePreview
-                    const displayTitle = getDisplayTitle(res, savedResults, activeSubject?.name);
-                    const displayPreview = computePreview(res);
+                      // Real titles & previews via getDisplayTitle and computePreview
+                      const displayTitle = getDisplayTitle(res, subjectResults, activeSubject?.name);
+                      const displayPreview = computePreview(res).trim();
 
-                    // Explicit action link mapping per type: never fall back to Start quiz
-                    const cardCount = res.flashcardData?.cards?.length || 0;
-                    const actionLabel = isSummary 
-                      ? 'Open summary' 
-                      : isExplanation 
-                      ? 'Open explanation' 
-                      : isQuiz 
-                        ? (res.lastScore ? `Retake quiz - last score ${res.lastScore.score}/${res.lastScore.total}` : 'Start quiz')
-                        : isFlashcards && cardCount > 0 
-                          ? `Open flashcards (${cardCount})` 
-                          : isFlashcards
-                            ? 'Open flashcards'
-                            : 'Open answer';
+                      // Explicit action link mapping per type: never fall back to Start quiz
+                      const cardCount = res.flashcardData?.cards?.length || 0;
+                      const actionLabel = isSummary 
+                        ? 'Open summary' 
+                        : isExplanation 
+                        ? 'Open explanation' 
+                        : isQuiz 
+                          ? (res.lastScore ? `Retake quiz - last score ${res.lastScore.score}/${res.lastScore.total}` : 'Start quiz')
+                          : isFlashcards && cardCount > 0 
+                            ? `Open flashcards (${cardCount})` 
+                            : isFlashcards
+                              ? 'Open flashcards'
+                              : 'Open answer';
 
-                    const handleOpenResult = () => {
-                      if (isQuiz) {
+                      const handleOpenResult = () => {
                         navigate(`/results/${res.id}`);
-                      } else if (isFlashcards) {
-                        navigate(`/results/${res.id}`);
-                      } else {
-                        navigate(`/results/${res.id}`);
-                      }
-                    };
+                      };
 
-                    return (
-                      <div
-                        key={res.id}
-                        className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-2xl shadow-sm space-y-2.5 hover:border-[var(--border-strong)] transition-all flex flex-col justify-between group"
-                      >
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold px-2.5 py-0.5 rounded-full border ${badgeColorClass}`}>
-                              {typeIcon}
-                              {typeName}
-                            </span>
-                            
-                            <div className="flex items-center gap-1.5">
-                              {/* Sync Status Badge */}
-                              <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                                res.hasPendingWrites
-                                  ? 'bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning-border)]'
-                                  : 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success-border)]'
-                              }`}>
-                                <Cloud className="w-2.5 h-2.5" />
-                                {res.hasPendingWrites ? 'Waiting to sync' : 'Saved'}
+                      const resSubject = subjects.find(s => s.id === res.subjectId) || activeSubject;
+                      const resSubjectTheme = getSubjectColorTheme(resSubject, isDark);
+
+                      return (
+                        <div
+                          key={res.id}
+                          style={resSubjectTheme.borderLeftStyle}
+                          className={`bg-[var(--surface)] border border-[var(--border)] ${resSubjectTheme.borderLeftClass} h-[176px] p-4 rounded-2xl shadow-sm hover:border-[var(--border-strong)] transition-all flex flex-col justify-between overflow-hidden min-w-0 group`}
+                        >
+                          <div className="space-y-1.5 min-w-0">
+                            <div className="flex items-center justify-between gap-1.5 min-w-0">
+                              <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold px-2.5 py-0.5 rounded-full border whitespace-nowrap shrink-0 ${badgeColorClass}`}>
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={resSubjectTheme.dotStyle} />
+                                {typeIcon}
+                                {typeName}
                               </span>
+                              
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {/* Sync Status Badge */}
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                                  res.hasPendingWrites
+                                    ? 'bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning-border)]'
+                                    : 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success-border)]'
+                                }`}>
+                                  <Cloud className="w-2.5 h-2.5 shrink-0" />
+                                  {res.hasPendingWrites ? 'Waiting to sync' : 'Saved'}
+                                </span>
 
-                              {/* Delete Study Result Option */}
-                              <button
-                                onClick={(e) => handleDeleteResult(e, res.id)}
-                                disabled={isDeleting}
-                                title="Delete study result from cloud and device"
-                                aria-label="Delete study result"
-                                className="p-1 rounded-lg text-[var(--muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] transition-colors cursor-pointer"
-                              >
-                                {isDeleting ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--danger)]" />
-                                ) : (
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                )}
-                              </button>
+                                {/* Delete Study Result Option */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteResult(e, res.id)}
+                                  disabled={isDeleting}
+                                  title="Delete study result from cloud and device"
+                                  aria-label="Delete study result"
+                                  className="p-1 rounded-lg text-[var(--muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] transition-colors cursor-pointer shrink-0"
+                                >
+                                  {isDeleting ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--danger)]" />
+                                  ) : (
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              </div>
                             </div>
+
+                            <h4 className="text-xs font-bold text-[var(--text)] line-clamp-2 break-words leading-snug" title={displayTitle}>
+                              {displayTitle}
+                            </h4>
+
+                            {displayPreview && (
+                              <p className="text-[11px] text-[var(--muted)] line-clamp-2 leading-relaxed break-words">
+                                {displayPreview}
+                              </p>
+                            )}
                           </div>
 
-                          <h4 className="text-xs font-bold text-[var(--text)] line-clamp-2" title={displayTitle}>
-                            {displayTitle}
-                          </h4>
+                          <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 shrink-0">
+                            <span className="text-[10px] text-[var(--muted)] whitespace-nowrap">
+                              {new Date(res.timestamp).toLocaleDateString()}
+                            </span>
 
-                          <p className="text-[11px] text-[var(--muted)] line-clamp-2 leading-relaxed">
-                            {displayPreview}
-                          </p>
+                            <button
+                              type="button"
+                              onClick={handleOpenResult}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary-accent)] hover:underline cursor-pointer whitespace-nowrap shrink-0"
+                            >
+                              <span>{actionLabel}</span>
+                              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                            </button>
+                          </div>
                         </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-                        <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between">
-                          <span className="text-[10px] text-[var(--muted)]">
-                            {new Date(res.timestamp).toLocaleDateString()}
-                          </span>
-
-                          <button
-                            onClick={handleOpenResult}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary-accent)] hover:underline cursor-pointer whitespace-nowrap"
-                          >
-                            <span>{actionLabel}</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                </div>
-
-                {/* Bottom Pagination Bar when total pages > 1 */}
-                {totalResultsPages > 1 && (
-                  <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)] text-xs">
-                    <span className="text-[11px] text-[var(--muted)]">
-                      Showing {(currentPage - 1) * RESULTS_PER_PAGE + 1}–{Math.min(currentPage * RESULTS_PER_PAGE, subjectResults.length)} of {subjectResults.length}
+                {/* Bottom Pagination Bar */}
+                {filteredResults.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--border-subtle)] text-xs">
+                    <span className="text-[11px] text-[var(--muted)] whitespace-nowrap">
+                      Showing {(currentPage - 1) * resultsPerPage + 1}–{Math.min(currentPage * resultsPerPage, filteredResults.length)} of {filteredResults.length}
                     </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setResultsPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage <= 1}
-                        className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--hover)] transition-colors shadow-xs"
-                      >
-                        Previous
-                      </button>
-                      {Array.from({ length: totalResultsPages }).map((_, i) => (
+                    {totalResultsPages > 1 && (
+                      <div className="flex items-center gap-1 flex-wrap ml-auto">
                         <button
-                          key={i}
-                          onClick={() => setResultsPage(i + 1)}
-                          className={`w-7 h-7 text-xs rounded-lg font-medium transition-colors ${
-                            currentPage === i + 1
-                              ? 'bg-[var(--primary)] text-[var(--primary-text)]'
-                              : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] shadow-xs'
-                          }`}
+                          type="button"
+                          onClick={() => setResultsPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage <= 1}
+                          className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--hover)] transition-colors shadow-xs whitespace-nowrap shrink-0 cursor-pointer"
                         >
-                          {i + 1}
+                          Previous
                         </button>
-                      ))}
-                      <button
-                        onClick={() => setResultsPage(p => Math.min(totalResultsPages, p + 1))}
-                        disabled={currentPage >= totalResultsPages}
-                        className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--hover)] transition-colors shadow-xs"
-                      >
-                        Next
-                      </button>
-                    </div>
+                        {paginationItems.map((item, idx) =>
+                          item === 'ellipsis' ? (
+                            <span
+                              key={`ellipsis-${idx}`}
+                              className="px-1.5 text-xs text-[var(--muted)] select-none"
+                              aria-hidden="true"
+                            >
+                              ...
+                            </span>
+                          ) : (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => setResultsPage(item)}
+                              aria-current={currentPage === item ? 'page' : undefined}
+                              className={`min-w-[28px] h-7 px-2 text-xs rounded-lg font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                                currentPage === item
+                                  ? 'bg-[var(--primary)] text-[var(--primary-text)]'
+                                  : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--hover)] shadow-xs'
+                              }`}
+                            >
+                              {item}
+                            </button>
+                          )
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setResultsPage(p => Math.min(totalResultsPages, p + 1))}
+                          disabled={currentPage >= totalResultsPages}
+                          className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--hover)] transition-colors shadow-xs whitespace-nowrap shrink-0 cursor-pointer"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

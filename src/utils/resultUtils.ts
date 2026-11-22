@@ -1,4 +1,5 @@
 import { SavedResult } from '../types';
+import { stripGreetingsAndOffers } from './aiCleaners';
 
 export function stripMarkdownAndLatex(text: string): string {
   if (!text) return '';
@@ -27,12 +28,47 @@ export function isTemplateText(text: string): boolean {
   return false;
 }
 
+export function formatResultTime(timestamp?: number): string {
+  if (!timestamp || !Number.isFinite(timestamp)) return '';
+  try {
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  } catch {
+    return '';
+  }
+}
+
+function extractFirstSentenceFromContent(rawContent: string, maxLen = 160): string {
+  if (!rawContent) return '';
+  const cleanedRaw = stripGreetingsAndOffers(rawContent);
+  const lines = cleanedRaw
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  // Prefer non-heading body lines so markdown titles don't hide the first sentence
+  const bodyLines = lines.filter(l => !/^#{1,6}\s+/.test(l) && !/^[-*_]{3,}$/.test(l));
+  const targetText = (bodyLines.length > 0 ? bodyLines : lines).join(' ');
+  const plain = stripMarkdownAndLatex(targetText).replace(/^[-•*]\s+/, '').trim();
+  if (!plain) return '';
+
+  const sentences = plain.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  const firstMeaningful = sentences.find(s => s.length > 10) || sentences[0] || plain;
+  if (firstMeaningful.length > maxLen) {
+    return firstMeaningful.slice(0, maxLen - 3).trim() + '...';
+  }
+  return firstMeaningful;
+}
+
 /**
  * Computes a plain-text preview (max 2 lines, Markdown and LaTeX symbols stripped):
  * - Quiz: the first question text, then "+ N more questions".
  * - Flashcards: the fronts of the first 2 cards, then "+ N more cards".
  * - Summary: the TL;DR sentence(s).
- * - Explanation: the first core idea.
+ * - Explanation: the first sentence of the content.
  * - Answer: the first sentence of the answer.
  */
 export function computePreview(res: {
@@ -42,13 +78,16 @@ export function computePreview(res: {
   flashcardData?: any;
   preview?: string;
 }): string {
-  // If a valid preview is already stored and is not template text, return it
+  // Use stored preview only if it remains non-empty after cleaning
   if (res.preview && res.preview.trim() && !isTemplateText(res.preview)) {
-    return stripMarkdownAndLatex(res.preview);
+    const cleanedStored = stripMarkdownAndLatex(stripGreetingsAndOffers(res.preview)).trim();
+    if (cleanedStored && !isTemplateText(cleanedStored)) {
+      return cleanedStored;
+    }
   }
 
   const rawType = (res.type || 'summary').trim().toLowerCase();
-  const content = res.content || '';
+  const content = stripGreetingsAndOffers(res.content || '');
 
   // 1. Quiz: first question text, then "+ N more questions"
   if (rawType === 'quiz' || res.quizData?.questions?.length) {
@@ -121,27 +160,23 @@ export function computePreview(res: {
   if (rawType === 'summary' || rawType === 'summarize') {
     const tldrMatch = cleanText.match(/(?:tl;?dr|tldr|takeaways?|key takeaways?|overview)[:\s*#]+([^.\n]+[.!?])/i);
     if (tldrMatch) {
-      return stripMarkdownAndLatex(tldrMatch[1]);
+      const cleaned = stripMarkdownAndLatex(tldrMatch[1]);
+      if (cleaned) return cleaned;
     }
-    const sentences = cleanText.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 10);
-    const preview = sentences.slice(0, 2).join(' ') || cleanText.slice(0, 150);
-    return preview;
+    return extractFirstSentenceFromContent(content, 160);
   }
 
-  // 4. Explanation: the first core idea
+  // 4. Explanation: the first sentence of the content
   if (rawType === 'explanation' || rawType === 'explain') {
-    const sentences = cleanText.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 10);
-    return sentences[0] || cleanText.slice(0, 150);
+    return extractFirstSentenceFromContent(content, 160);
   }
 
   // 5. Answer: the first sentence of the answer
   if (rawType === 'answer' || rawType === 'custom') {
-    const sentences = cleanText.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 5);
-    return sentences[0] || cleanText.slice(0, 150);
+    return extractFirstSentenceFromContent(content, 160);
   }
 
-  const sentences = cleanText.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 5);
-  return sentences[0] || cleanText.slice(0, 150);
+  return extractFirstSentenceFromContent(content, 160);
 }
 
 /**
@@ -163,13 +198,24 @@ export function isOldOrGenericTitle(title?: string): boolean {
   return false;
 }
 
+function appendTimeSuffixToTitle(baseTitle: string, timeStr: string, maxLen = 60): string {
+  if (!timeStr) return baseTitle;
+  const suffix = ` · ${timeStr}`;
+  const maxBaseLen = maxLen - suffix.length;
+  let trimmedBase = baseTitle.trim();
+  if (trimmedBase.length > maxBaseLen) {
+    // Preserve clean ellipsis without doubling dots
+    trimmedBase = trimmedBase.slice(0, Math.max(10, maxBaseLen - 3)).replace(/[.]+$/, '').trim() + '...';
+  }
+  return `${trimmedBase}${suffix}`;
+}
+
 /**
  * Computes a real short title (max 60 characters) from real content in the form "<Type>: <topic>":
  * - Quiz and Flashcards: uses model "title" field, or most frequent "topic" of items, or fallback source name.
  * - Summary: topic from first heading or TL;DR.
  * - Explanation: main concept(s).
- * - Answer: cleaned question.
- * - If title already exists for same sources and type, adds "#2", "#3".
+ * - Answer: cleaned question. Repeated answers use time created (e.g. "09:25") instead of "#2", "#3".
  */
 export function computeTitle(
   actionType: string,
@@ -177,9 +223,11 @@ export function computeTitle(
   quizData?: any,
   flashcardData?: any,
   sourceName: string = 'Study Material',
-  existingResults: SavedResult[] = []
+  existingResults: SavedResult[] = [],
+  timestamp?: number
 ): string {
   const rawType = (actionType || 'summary').trim().toLowerCase();
+  const isAnswerType = rawType === 'answer' || rawType === 'custom';
   const typeLabel = 
     rawType === 'summary' || rawType === 'summarize' ? 'Summary' :
     rawType === 'explanation' || rawType === 'explain' ? 'Explanation' :
@@ -308,7 +356,7 @@ export function computeTitle(
     }
   } 
   // 5. Answer: cleaned question
-  else if (rawType === 'answer' || rawType === 'custom') {
+  else if (isAnswerType) {
     const cleanQ = sourceName.trim().replace(/^[^a-zA-Z0-9]+/, '').replace(/[?.,!]+$/, '').trim();
     topic = cleanQ || 'Question';
   }
@@ -321,20 +369,32 @@ export function computeTitle(
 
   // Prefix and budget for max 60 chars
   const prefix = `${typeLabel}: `;
-  const maxTopicLen = 60 - prefix.length - 4; // Reserve 4 chars for potential " #99"
+  const timeStr = isAnswerType ? formatResultTime(timestamp || Date.now()) : '';
+  const suffixBudget = isAnswerType ? (timeStr ? timeStr.length + 3 : 8) : 4;
+  const maxTopicLen = 60 - prefix.length - suffixBudget;
   let cleanTopic = stripMarkdownAndLatex(topic);
   if (cleanTopic.length > maxTopicLen) {
     cleanTopic = cleanTopic.slice(0, maxTopicLen - 3).trim() + '...';
   }
   const baseTitle = `${prefix}${cleanTopic}`;
 
-  let finalTitle = baseTitle;
+  const normalizedPrefix = cleanTopic.replace(/\.{3}$/, '').slice(0, 24).toLowerCase();
   const sameTitleCount = existingResults.filter(r => {
-    const t = r.title || '';
-    return t === baseTitle || t.startsWith(baseTitle + ' #');
+    const t = (r.title || '').replace(/\s+#\d+$/, '').replace(/\s+·\s+\d{2}:\d{2}$/, '');
+    if (t === baseTitle) return true;
+    if (isAnswerType && normalizedPrefix.length >= 12) {
+      return t.toLowerCase().startsWith(`${prefix.toLowerCase()}${normalizedPrefix}`);
+    }
+    return false;
   }).length;
+
+  let finalTitle = baseTitle;
   if (sameTitleCount > 0) {
-    finalTitle = `${baseTitle} #${sameTitleCount + 1}`;
+    if (isAnswerType) {
+      finalTitle = timeStr ? appendTimeSuffixToTitle(baseTitle, timeStr, 60) : baseTitle;
+    } else {
+      finalTitle = `${baseTitle} #${sameTitleCount + 1}`;
+    }
   }
   if (finalTitle.length > 60) {
     finalTitle = finalTitle.slice(0, 57).trim() + '...';
@@ -344,21 +404,52 @@ export function computeTitle(
 
 /**
  * Helper to get the display title for any result, computing dynamically for old results
+ * and replacing "#2", "#3" answer suffixes with creation time (e.g. "09:25") at display time.
  */
 export function getDisplayTitle(
-  res: { title?: string; type?: string; content?: string; quizData?: any; flashcardData?: any; id?: string },
+  res: { title?: string; type?: string; content?: string; quizData?: any; flashcardData?: any; id?: string; timestamp?: number },
   existingResults: any[] = [],
   fallbackSourceName?: string
 ): string {
+  const rawType = (res.type || '').trim().toLowerCase();
+  const isAnswerType = rawType === 'answer' || rawType === 'custom';
+
   if (res.title && !isOldOrGenericTitle(res.title)) {
+    if (isAnswerType) {
+      const hasHashSuffix = /\s+#\d+$/.test(res.title);
+      const strippedTitle = res.title.replace(/\s+#\d+$/, '').trim();
+      const baseKey = strippedTitle.replace(/\.{3}$/, '').toLowerCase();
+      const hasSiblingDuplicate = existingResults.some(r => {
+        if (r.id === res.id) return false;
+        const otherType = (r.type || '').trim().toLowerCase();
+        if (otherType !== 'answer' && otherType !== 'custom') return false;
+        const otherBase = (r.title || '')
+          .replace(/\s+#\d+$/, '')
+          .replace(/\s+·\s+\d{2}:\d{2}$/, '')
+          .replace(/\.{3}$/, '')
+          .trim()
+          .toLowerCase();
+        return otherBase === baseKey || (baseKey.length >= 20 && otherBase.startsWith(baseKey.slice(0, 24)));
+      });
+
+      if ((hasHashSuffix || hasSiblingDuplicate) && !/\s+·\s+\d{2}:\d{2}$/.test(strippedTitle)) {
+        const timeStr = formatResultTime(res.timestamp);
+        if (timeStr) {
+          return appendTimeSuffixToTitle(strippedTitle, timeStr, 60);
+        }
+        return strippedTitle;
+      }
+    }
     return res.title;
   }
+
   return computeTitle(
     res.type || 'summary',
     res.content || '',
     res.quizData,
     res.flashcardData,
     fallbackSourceName || 'Study Material',
-    existingResults.filter(r => r.id !== res.id)
+    existingResults.filter(r => r.id !== res.id),
+    res.timestamp
   );
 }

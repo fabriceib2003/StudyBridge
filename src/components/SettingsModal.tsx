@@ -14,7 +14,8 @@ import {
   Download, 
   AlertTriangle,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  HardDrive
 } from 'lucide-react';
 import { User as FirebaseUser, updatePassword, sendEmailVerification, deleteUser, updateProfile } from 'firebase/auth';
 import { RoutingMode } from '../types';
@@ -79,6 +80,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDriveConnected, setIsDriveConnected] = useState(() => 
+    localStorage.getItem('studybridge_drive_connected') === 'true' || 
+    Boolean(sessionStorage.getItem('google_drive_token'))
+  );
+
+  const handleDisconnectDrive = () => {
+    const token = sessionStorage.getItem('google_drive_token');
+    if (token && (window as any).google?.accounts?.oauth2?.revoke) {
+      try {
+        (window as any).google.accounts.oauth2.revoke(token, () => {});
+      } catch (e) {
+        console.warn('Revoke token warning:', e);
+      }
+    }
+    sessionStorage.removeItem('google_drive_token');
+    localStorage.removeItem('studybridge_drive_connected');
+    localStorage.removeItem('studybridge_drive_email');
+    setIsDriveConnected(false);
+    setSuccessMsg('Google Drive disconnected');
+    setTimeout(() => setSuccessMsg(null), 3000);
+  };
 
   if (!isOpen) return null;
 
@@ -486,6 +508,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <p className="text-xs text-[var(--muted)] leading-relaxed">
                     When on-device AI is available in your browser (Chrome on desktop), short notes and simple tasks run locally on your device for privacy. In other browsers, requests route securely to cloud Vertex AI endpoints.
                   </p>
+                </div>
+
+                <div className="bg-[var(--surface-raised)] border border-[var(--border)] p-4 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <HardDrive className="w-4 h-4 text-[var(--primary-accent)]" />
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--text)]">
+                        Google Drive Connection
+                      </h5>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                      isDriveConnected
+                        ? 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success-border)]'
+                        : 'bg-[var(--surface)] text-[var(--muted)] border-[var(--border)]'
+                    }`}>
+                      {isDriveConnected 
+                        ? `Connected as ${localStorage.getItem('studybridge_drive_email') || user.email || 'account'}` 
+                        : 'Not connected'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    Manage your connected Google account used for importing files from Google Drive. Access tokens are kept in session and never stored on servers.
+                  </p>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleDisconnectDrive}
+                      disabled={!isDriveConnected}
+                      className="px-3.5 py-2 rounded-xl text-xs font-medium border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] hover:border-[var(--danger-border)] text-[var(--text-secondary)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                    >
+                      Disconnect Google Drive
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-3 pt-2">

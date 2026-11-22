@@ -116,6 +116,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
     sessionStorage.removeItem('google_drive_token');
     localStorage.removeItem('studybridge_drive_connected');
+    localStorage.removeItem('studybridge_drive_email');
     setIsDriveConnected(false);
     showToast('Google Drive disconnected');
   };
@@ -621,7 +622,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         ? 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success-border)]'
                         : 'bg-[var(--surface)] text-[var(--muted)] border-[var(--border)]'
                     }`}>
-                      {isDriveConnected ? 'Connected' : 'Not Connected'}
+                      {isDriveConnected 
+                        ? `Connected as ${localStorage.getItem('studybridge_drive_email') || user.email || 'account'}` 
+                        : 'Not connected'}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--muted)] leading-relaxed">

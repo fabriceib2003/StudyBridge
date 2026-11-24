@@ -648,11 +648,10 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
   const aiInstance = ai;
 
   const CLOUD_MODEL_CHAIN = [
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-flash-latest',
-    'gemini-2.5-pro',
-    'gemini-pro-latest'
+    'gemini-3.1-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-3.5-flash-lite',
+    'gemini-3.8-flash'
   ];
 
   const isStructuredJson = options.actionType === 'quiz' || options.actionType === 'flashcards';
@@ -685,8 +684,6 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
       msg.includes('[503') ||
       msg.includes('[429') ||
       msg.includes('[404') ||
-      msg.includes('parse-failed') ||
-      msg.includes('parse') ||
       msg.includes('high demand') ||
       msg.includes('overloaded') ||
       msg.includes('unavailable') ||
@@ -810,10 +807,6 @@ export async function executeAIRequest(options: ExecuteAIOptions): Promise<{
   }
 
   if (lastError && !fullText) {
-    const msg = (lastError?.message || String(lastError)).toLowerCase();
-    if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted')) {
-      throw new Error("Daily free tier AI quota exceeded (20 requests per day limit reached on Free Tier). Please try again tomorrow or use on-device AI in Chrome desktop.");
-    }
     throw lastError;
   }
 

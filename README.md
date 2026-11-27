@@ -1,8 +1,8 @@
 # StudyBridge: Hybrid On-Device + Cloud AI Study Assistant
 
 **Live app:** https://studybridge-app.up.railway.app
-**Demo video (YouTube):** https://youtu.be/IiJdGPegnmc
-**Code:** [GitHub repo URL]
+**Demo video (YouTube):** https://youtu.be/KSLwzlMFIb0
+**Code:** https://github.com/fabriceib2003/StudyBridge.git
 **Platform:** Web (Chrome), built with Firebase AI Logic hybrid inference
 **License:** Apache-2.0
 **Built for:** #BuildHybridAI 2026
